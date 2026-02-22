@@ -1,0 +1,42 @@
+# Gradle files
+.gradle/
+build/
+app/build/
+
+# Local configuration (contains SDK path - do not commit)
+local.properties
+
+# Android Studio / IntelliJ IDEA
+.idea/
+!.idea/gradle.xml
+!.idea/vcs.xml
+*.iml
+
+# Signing keys - NEVER commit these
+*.keystore
+*.jks
+*.p12
+*.pfx
+
+# Native build outputs
+.externalNativeBuild/
+.cxx/
+
+# Captures & profiling
+captures/
+
+# Google services (if present)
+google-services.json
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Kotlin incremental compilation data
+.kotlin/
+
+# Lint outputs
+lint/
+
+# Test results
+test-results/
