@@ -23,8 +23,6 @@ object EsdeDefaultConfig {
         val packages = mutableSetOf<String>()
         try {
             context.assets.open("es_find_rules.xml").use { stream ->
-                val parser = context.resources.assets.openXmlResourceParser("es_find_rules.xml")
-                // Use standard XmlPullParser via Xml.newPullParser for asset streams
                 val pullParser = android.util.Xml.newPullParser()
                 pullParser.setInput(stream, "UTF-8")
                 var event = pullParser.eventType
