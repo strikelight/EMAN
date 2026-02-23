@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.esde.emulatormanager.data.EsdeDefaultConfig
 import com.esde.emulatormanager.ui.navigation.AppNavigation
 import com.esde.emulatormanager.ui.screens.PermissionScreen
 import com.esde.emulatormanager.ui.theme.ESDEEmulatorManagerTheme
@@ -22,6 +23,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        EsdeDefaultConfig.load(this)
 
         setContent {
             ESDEEmulatorManagerTheme {
