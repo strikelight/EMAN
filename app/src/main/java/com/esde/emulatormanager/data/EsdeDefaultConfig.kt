@@ -15,6 +15,19 @@ object EsdeDefaultConfig {
     private var defaultPackages: Set<String>? = null
 
     /**
+     * Package names that appear in ES-DE's default es_find_rules.xml but where EMAN writes
+     * its own custom find-rule entries (e.g. GAMENATIVE-STEAM, GAMEHUB-LITE) that replace
+     * the generic default. These apps must keep their toggle so the user can enable/disable
+     * the EMAN-specific configuration.
+     */
+    private val customManagedPackages = setOf(
+        "app.gamenative",          // EMAN writes GAMENATIVE-STEAM / GOG / EPIC rules
+        "com.nickmafra.gamenative", // Legacy GameNative package
+        "gamehub.lite",            // EMAN writes GAMEHUB-LITE with Steam launch command
+        "emuready.gamehub.lite"    // Alternate GameHub Lite package
+    )
+
+    /**
      * Parses the bundled es_find_rules.xml asset and caches all package names.
      * Safe to call multiple times — only parses once.
      */
@@ -43,9 +56,11 @@ object EsdeDefaultConfig {
     }
 
     /**
-     * Returns true if the given package name appears in ES-DE's bundled default find rules,
-     * meaning ES-DE already supports this emulator out of the box.
+     * Returns true if the given package name appears in ES-DE's bundled default find rules
+     * AND is not a package that EMAN manages with its own custom find-rule entries.
+     * Emulators returning true are shown with an "ES-DE Default" badge (no toggle).
      */
     fun isDefaultEmulator(packageName: String): Boolean =
-        defaultPackages?.contains(packageName) ?: false
+        !customManagedPackages.contains(packageName) &&
+        (defaultPackages?.contains(packageName) ?: false)
 }
