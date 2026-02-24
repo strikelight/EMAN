@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import com.esde.emulatormanager.data.BiosFile
-import com.esde.emulatormanager.data.EsdeDefaultConfig
 import com.esde.emulatormanager.data.KnownEmulators
 import com.esde.emulatormanager.data.SystemBios
 import com.esde.emulatormanager.data.model.InstalledEmulator
@@ -104,10 +103,6 @@ fun SystemDetailScreen(
                 )
             }
 
-            // Partition emulators — plain filter is fine here (LazyListScope, not @Composable)
-            val defaultEmulators = availableEmulators.filter { EsdeDefaultConfig.isDefaultEmulator(it.packageName) }
-            val customEmulators = availableEmulators.filter { !EsdeDefaultConfig.isDefaultEmulator(it.packageName) }
-
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -130,70 +125,51 @@ fun SystemDetailScreen(
             if (availableEmulators.isEmpty()) {
                 item { EmptyEmulatorState() }
             } else {
-                // Explanatory note — only shown when there are ES-DE default emulators
-                if (defaultEmulators.isNotEmpty()) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Info,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "\"ES-DE Default\" emulators are built into ES-DE and always available. " +
-                                        "Use toggles below to add extra emulators to your custom configuration.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // ES-DE default emulators — badge only, no toggle
-                items(defaultEmulators, key = { it.packageName }) { emulator ->
-                    DefaultEmulatorItem(emulator = emulator)
-                }
-
-                // Custom emulators — toggleable
-                if (customEmulators.isNotEmpty()) {
-                    if (defaultEmulators.isNotEmpty()) {
-                        item {
-                            Text(
-                                text = "Custom Configuration",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-                    }
-                    items(customEmulators, key = { it.packageName }) { emulator ->
-                        var isEnabled by remember {
-                            mutableStateOf(config.configuredEmulators.contains(emulator.appName))
-                        }
-                        EmulatorItem(
-                            emulator = emulator,
-                            isEnabled = isEnabled,
-                            onToggle = { enabled ->
-                                isEnabled = enabled
-                                onEmulatorToggle(emulator, enabled)
-                                showSaveSnackbar = true
-                            }
+                // Info note
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
                         )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Toggle emulators on to add them to your custom configuration. " +
+                                    "This lets you set a preferred default or choose between alternatives in ES-DE.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+                }
+
+                // All installed emulators — all toggleable
+                items(availableEmulators, key = { it.packageName }) { emulator ->
+                    var isEnabled by remember {
+                        mutableStateOf(config.configuredEmulators.contains(emulator.appName))
+                    }
+                    EmulatorItem(
+                        emulator = emulator,
+                        isEnabled = isEnabled,
+                        onToggle = { enabled ->
+                            isEnabled = enabled
+                            onEmulatorToggle(emulator, enabled)
+                            showSaveSnackbar = true
+                        }
+                    )
                 }
             }
 
