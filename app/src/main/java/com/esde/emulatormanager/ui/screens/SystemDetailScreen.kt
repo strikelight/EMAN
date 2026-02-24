@@ -17,9 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.core.graphics.drawable.toBitmap
 import com.esde.emulatormanager.data.BiosFile
 import com.esde.emulatormanager.data.KnownEmulators
 import com.esde.emulatormanager.data.SystemBios
@@ -125,6 +127,22 @@ fun SystemDetailScreen(
             if (availableEmulators.isEmpty()) {
                 item { EmptyEmulatorState() }
             } else {
+                // Packages managed by EMAN's Windows launcher configuration flow —
+                // their ES-DE entries are written with custom names and launch args
+                // (GAMEHUB-LITE, GAMENATIVE-STEAM, etc.) via the Windows Games screen,
+                // not through the standard emulator toggle path.
+                val windowsManagedPackages = setOf(
+                    "app.gamenative", "com.nickmafra.gamenative",
+                    "gamehub.lite", "com.nickmafra.gamehublite", "emuready.gamehub.lite"
+                )
+                val isWindowsSystem = config.system.name == "windows" || config.system.name == "pc"
+                val managedEmulators = if (isWindowsSystem)
+                    availableEmulators.filter { it.packageName in windowsManagedPackages }
+                else emptyList()
+                val toggleableEmulators = if (isWindowsSystem)
+                    availableEmulators.filter { it.packageName !in windowsManagedPackages }
+                else availableEmulators
+
                 // Info note
                 item {
                     Card(
@@ -156,8 +174,83 @@ fun SystemDetailScreen(
                     }
                 }
 
-                // All installed emulators — all toggleable
-                items(availableEmulators, key = { it.packageName }) { emulator ->
+                // GameHub Lite / GameNative — managed via the Windows Games screen
+                if (managedEmulators.isNotEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Info,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Configured via Windows Games screen",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "GameHub Lite and GameNative are set up with custom launch " +
+                                        "commands through the Windows Games screen. Use the " +
+                                        "\"Launcher Configuration\" card there to enable or update them.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                managedEmulators.forEach { emulator ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    ) {
+                                        if (emulator.icon != null) {
+                                            val bitmap = remember(emulator.icon) {
+                                                emulator.icon.toBitmap().asImageBitmap()
+                                            }
+                                            androidx.compose.foundation.Image(
+                                                bitmap = bitmap,
+                                                contentDescription = emulator.appName,
+                                                modifier = Modifier
+                                                    .size(20.dp)
+                                                    .clip(RoundedCornerShape(4.dp))
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Gamepad,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = emulator.appName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Standard toggleable emulators
+                items(toggleableEmulators, key = { it.packageName }) { emulator ->
                     var isEnabled by remember {
                         mutableStateOf(config.configuredEmulators.contains(emulator.appName))
                     }
