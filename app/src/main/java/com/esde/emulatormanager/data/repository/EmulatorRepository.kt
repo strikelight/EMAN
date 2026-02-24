@@ -435,69 +435,69 @@ class EmulatorRepository @Inject constructor(
         return listOf(
             // Nintendo Systems
             GameSystem("nes", "Nintendo Entertainment System", "%ROMPATH%/nes", ".nes .NES .zip .ZIP .7z .7Z", emptyList(), "nes", "nes"),
-            GameSystem("snes", "Super Nintendo", "%ROMPATH%/snes", ".smc .SMC .sfc .SFC .zip .ZIP .7z .7Z", emptyList(), "snes", "snes"),
-            GameSystem("n64", "Nintendo 64", "%ROMPATH%/n64", ".n64 .N64 .z64 .Z64 .v64 .V64 .zip .ZIP .7z .7Z", emptyList(), "n64", "n64"),
-            GameSystem("gc", "Nintendo GameCube", "%ROMPATH%/gc", ".iso .ISO .gcm .GCM .ciso .CISO .rvz .RVZ", emptyList(), "gc", "gc"),
-            GameSystem("wii", "Nintendo Wii", "%ROMPATH%/wii", ".iso .ISO .wbfs .WBFS .rvz .RVZ", emptyList(), "wii", "wii"),
+            GameSystem("snes", "Super Nintendo", "%ROMPATH%/snes", ".bml .BML .bs .BS .bsx .BSX .dx2 .DX2 .fig .FIG .gd3 .GD3 .gd7 .GD7 .mgd .MGD .sfc .SFC .smc .SMC .st .ST .swc .SWC .7z .7Z .zip .ZIP", emptyList(), "snes", "snes"),
+            GameSystem("n64", "Nintendo 64", "%ROMPATH%/n64", ".app .APP .bin .BIN .d64 .D64 .n64 .N64 .ndd .NDD .u1 .U1 .v64 .V64 .z64 .Z64 .7z .7Z .zip .ZIP", emptyList(), "n64", "n64"),
+            GameSystem("gc", "Nintendo GameCube", "%ROMPATH%/gc", ".ciso .CISO .dff .DFF .dol .DOL .elf .ELF .gcm .GCM .gcz .GCZ .iso .ISO .json .JSON .m3u .M3U .rvz .RVZ .tgc .TGC .wad .WAD .wbfs .WBFS .wia .WIA .7z .7Z .zip .ZIP", emptyList(), "gc", "gc"),
+            GameSystem("wii", "Nintendo Wii", "%ROMPATH%/wii", ".ciso .CISO .dff .DFF .dol .DOL .elf .ELF .gcm .GCM .gcz .GCZ .iso .ISO .json .JSON .m3u .M3U .rvz .RVZ .tgc .TGC .wad .WAD .wbfs .WBFS .wia .WIA .7z .7Z .zip .ZIP", emptyList(), "wii", "wii"),
             GameSystem("wiiu", "Nintendo Wii U", "%ROMPATH%/wiiu", ".elf .ELF .rpx .RPX .tmd .TMD .wua .WUA .wud .WUD .wuhb .WUHB .wux .WUX", emptyList(), "wiiu", "wiiu"),
-            GameSystem("switch", "Nintendo Switch", "%ROMPATH%/switch", ".nsp .NSP .xci .XCI", emptyList(), "switch", "switch"),
-            GameSystem("gb", "Game Boy", "%ROMPATH%/gb", ".gb .GB .zip .ZIP .7z .7Z", emptyList(), "gb", "gb"),
-            GameSystem("gbc", "Game Boy Color", "%ROMPATH%/gbc", ".gbc .GBC .zip .ZIP .7z .7Z", emptyList(), "gbc", "gbc"),
-            GameSystem("gba", "Game Boy Advance", "%ROMPATH%/gba", ".gba .GBA .zip .ZIP .7z .7Z", emptyList(), "gba", "gba"),
-            GameSystem("nds", "Nintendo DS", "%ROMPATH%/nds", ".nds .NDS .zip .ZIP .7z .7Z", emptyList(), "nds", "nds"),
-            GameSystem("3ds", "Nintendo 3DS", "%ROMPATH%/3ds", ".3ds .3DS .cia .CIA .app .APP", emptyList(), "3ds", "3ds"),
-            GameSystem("fds", "Famicom Disk System", "%ROMPATH%/fds", ".fds .FDS .zip .ZIP .7z .7Z", emptyList(), "fds", "fds"),
-            GameSystem("virtualboy", "Virtual Boy", "%ROMPATH%/virtualboy", ".vb .VB .zip .ZIP .7z .7Z", emptyList(), "virtualboy", "virtualboy"),
+            GameSystem("switch", "Nintendo Switch", "%ROMPATH%/switch", ".nca .NCA .nro .NRO .nso .NSO .nsp .NSP .xci .XCI", emptyList(), "switch", "switch"),
+            GameSystem("gb", "Game Boy", "%ROMPATH%/gb", ".bs .BS .cgb .CGB .dmg .DMG .gb .GB .gbc .GBC .sgb .SGB .sfc .SFC .smc .SMC .7z .7Z .zip .ZIP", emptyList(), "gb", "gb"),
+            GameSystem("gbc", "Game Boy Color", "%ROMPATH%/gbc", ".bs .BS .cgb .CGB .dmg .DMG .gb .GB .gbc .GBC .sgb .SGB .sfc .SFC .smc .SMC .7z .7Z .zip .ZIP", emptyList(), "gbc", "gbc"),
+            GameSystem("gba", "Game Boy Advance", "%ROMPATH%/gba", ".agb .AGB .bin .BIN .cgb .CGB .dmg .DMG .gb .GB .gba .GBA .gbc .GBC .sgb .SGB .7z .7Z .zip .ZIP", emptyList(), "gba", "gba"),
+            GameSystem("nds", "Nintendo DS", "%ROMPATH%/nds", ".app .APP .bin .BIN .nds .NDS .7z .7Z .zip .ZIP", emptyList(), "nds", "nds"),
+            GameSystem("3ds", "Nintendo 3DS", "%ROMPATH%/3ds", ".3ds .3DS .3dsx .3DSX .app .APP .axf .AXF .cci .CCI .cxi .CXI .elf .ELF .z3dsx .Z3DSX .zcci .ZCCI .zcxi .ZCXI .7z .7Z .zip .ZIP", emptyList(), "3ds", "3ds"),
+            GameSystem("fds", "Famicom Disk System", "%ROMPATH%/fds", ".fds .FDS .nes .NES .unf .UNF .UNIF .UNIF .7z .7Z .zip .ZIP", emptyList(), "fds", "fds"),
+            GameSystem("virtualboy", "Virtual Boy", "%ROMPATH%/virtualboy", ".bin .BIN .vb .VB .vboy .VBOY .7z .7Z .zip .ZIP", emptyList(), "virtualboy", "virtualboy"),
 
             // Sony Systems
-            GameSystem("psx", "Sony PlayStation", "%ROMPATH%/psx", ".bin .BIN .cue .CUE .chd .CHD .iso .ISO .pbp .PBP", emptyList(), "psx", "psx"),
-            GameSystem("ps2", "Sony PlayStation 2", "%ROMPATH%/ps2", ".iso .ISO .chd .CHD .cso .CSO .bin .BIN", emptyList(), "ps2", "ps2"),
-            GameSystem("ps3", "Sony PlayStation 3", "%ROMPATH%/ps3", ".desktop .ps3 .PS3 .iso .ISO .sfb .SFB", emptyList(), "ps3", "ps3"),
-            GameSystem("psp", "Sony PSP", "%ROMPATH%/psp", ".iso .ISO .cso .CSO .pbp .PBP", emptyList(), "psp", "psp"),
-            GameSystem("psvita", "Sony PS Vita", "%ROMPATH%/psvita", ".vpk .VPK", emptyList(), "psvita", "psvita"),
+            GameSystem("psx", "Sony PlayStation", "%ROMPATH%/psx", ".bin .BIN .cbn .CBN .ccd .CCD .chd .CHD .cue .CUE .ecm .ECM .exe .EXE .img .IMG .iso .ISO .m3u .M3U .mdf .MDF .mds .MDS .minipsf .MINIPSF .pbp .PBP .psexe .PSEXE .psf .PSF .toc .TOC .z .Z .znx .ZNX .7z .7Z .zip .ZIP", emptyList(), "psx", "psx"),
+            GameSystem("ps2", "Sony PlayStation 2", "%ROMPATH%/ps2", ".bin .BIN .chd .CHD .ciso .CISO .cso .CSO .dump .DUMP .elf .ELF .gz .GZ .img .IMG .iso .ISO .isz .ISZ .m3u .M3U .mdf .MDF .ngr .NRG", emptyList(), "ps2", "ps2"),
+            GameSystem("ps3", "Sony PlayStation 3", "%ROMPATH%/ps3", ".iso .ISO .ps3 .PS3", emptyList(), "ps3", "ps3"),
+            GameSystem("psp", "Sony PSP", "%ROMPATH%/psp", ".chd .CHD .cso .CSO .elf .ELF .iso .ISO .pbp .PBP .prx .PRX .7z .7Z .zip .ZIP", emptyList(), "psp", "psp"),
+            GameSystem("psvita", "Sony PS Vita", "%ROMPATH%/psvita", ".psvita .PSVITA", emptyList(), "psvita", "psvita"),
 
             // Microsoft Systems
-            GameSystem("xbox360", "Microsoft Xbox 360", "%ROMPATH%/xbox360", ".iso .ISO .xex .XEX .god .GOD", emptyList(), "xbox360", "xbox360"),
+            GameSystem("xbox360", "Microsoft Xbox 360", "%ROMPATH%/xbox360", ".7z .7Z .zip .ZIP", emptyList(), "xbox360", "xbox360"),
 
             // Sega Systems
-            GameSystem("genesis", "Sega Genesis", "%ROMPATH%/genesis", ".bin .BIN .gen .GEN .md .MD .smd .SMD .zip .ZIP .7z .7Z", emptyList(), "genesis", "genesis"),
-            GameSystem("megadrive", "Sega Mega Drive", "%ROMPATH%/megadrive", ".bin .BIN .gen .GEN .md .MD .smd .SMD .zip .ZIP .7z .7Z", emptyList(), "megadrive", "megadrive"),
-            GameSystem("mastersystem", "Sega Master System", "%ROMPATH%/mastersystem", ".sms .SMS .zip .ZIP .7z .7Z", emptyList(), "mastersystem", "mastersystem"),
-            GameSystem("gamegear", "Sega Game Gear", "%ROMPATH%/gamegear", ".gg .GG .zip .ZIP .7z .7Z", emptyList(), "gamegear", "gamegear"),
-            GameSystem("saturn", "Sega Saturn", "%ROMPATH%/saturn", ".bin .BIN .cue .CUE .chd .CHD .iso .ISO", emptyList(), "saturn", "saturn"),
-            GameSystem("dreamcast", "Sega Dreamcast", "%ROMPATH%/dreamcast", ".cdi .CDI .gdi .GDI .chd .CHD", emptyList(), "dreamcast", "dreamcast"),
-            GameSystem("segacd", "Sega CD", "%ROMPATH%/segacd", ".bin .BIN .cue .CUE .chd .CHD .iso .ISO", emptyList(), "segacd", "segacd"),
-            GameSystem("sega32x", "Sega 32X", "%ROMPATH%/sega32x", ".32x .32X .bin .BIN .zip .ZIP .7z .7Z", emptyList(), "sega32x", "sega32x"),
+            GameSystem("genesis", "Sega Genesis", "%ROMPATH%/genesis", ".68k .68K .bin .BIN .bms .BMS .chd .CHD .col .COL .cue .CUE .gen .GEN .gg .GG .iso .ISO .m3u .M3U .md .MD .mdx .MDX .rom .ROM .sg .SG .sgd .SGD .smd .SMD .sms .SMS .7z .7Z .zip .ZIP", emptyList(), "genesis", "genesis"),
+            GameSystem("megadrive", "Sega Mega Drive", "%ROMPATH%/megadrive", ".68k .68K .bin .BIN .bms .BMS .chd .CHD .col .COL .cue .CUE .gen .GEN .gg .GG .iso .ISO .m3u .M3U .md .MD .mdx .MDX .rom .ROM .sg .SG .sgd .SGD .smd .SMD .sms .SMS .7z .7Z .zip .ZIP", emptyList(), "megadrive", "megadrive"),
+            GameSystem("mastersystem", "Sega Master System", "%ROMPATH%/mastersystem", ".bin .BIN .gg .GG .rom .ROM .sg .SG .sms .SMS .7z .7Z .zip .ZIP", emptyList(), "mastersystem", "mastersystem"),
+            GameSystem("gamegear", "Sega Game Gear", "%ROMPATH%/gamegear", ".68k .68K .bin .BIN .bms .BMS .chd .CHD .col .COL .cue .CUE .gen .GEN .gg .GG .iso .ISO .m3u .M3U .md .MD .mdx .MDX .rom .ROM .sg .SG .sgd .SGD .smd .SMD .sms .SMS .7z .7Z .zip .ZIP", emptyList(), "gamegear", "gamegear"),
+            GameSystem("saturn", "Sega Saturn", "%ROMPATH%/saturn", ".bin .BIN .ccd .CCD .chd .CHD .cue .CUE .iso .ISO .m3u .M3U .mds .MDS .toc .TOC .7z .7Z .zip .ZIP", emptyList(), "saturn", "saturn"),
+            GameSystem("dreamcast", "Sega Dreamcast", "%ROMPATH%/dreamcast", ".cdi .CDI .chd .CHD .cue .CUE .dat .DAT .elf .ELF .gdi .GDI .iso .ISO .lst .LST .m3u .M3U .7z .7Z .zip .ZIP", emptyList(), "dreamcast", "dreamcast"),
+            GameSystem("segacd", "Sega CD", "%ROMPATH%/segacd", ".bin .BIN .ccd .CCD .chd .CHD .cue .CUE .iso .ISO .m3u .M3U .mds .MDS .toc .TOC .7z .7Z .zip .ZIP", emptyList(), "segacd", "segacd"),
+            GameSystem("sega32x", "Sega 32X", "%ROMPATH%/sega32x", ".32x .32X .68k .68K .bin .BIN .chd .CHD .cue .CUE .gen .GEN .iso .ISO .m3u .M3U .md .MD .smd .SMD .sms .SMS .7z .7Z .zip .ZIP", emptyList(), "sega32x", "sega32x"),
 
             // Atari Systems
-            GameSystem("atari2600", "Atari 2600", "%ROMPATH%/atari2600", ".a26 .A26 .bin .BIN .zip .ZIP .7z .7Z", emptyList(), "atari2600", "atari2600"),
-            GameSystem("atari5200", "Atari 5200", "%ROMPATH%/atari5200", ".a52 .A52 .bin .BIN .zip .ZIP .7z .7Z", emptyList(), "atari5200", "atari5200"),
-            GameSystem("atari7800", "Atari 7800", "%ROMPATH%/atari7800", ".a78 .A78 .bin .BIN .zip .ZIP .7z .7Z", emptyList(), "atari7800", "atari7800"),
-            GameSystem("atarilynx", "Atari Lynx", "%ROMPATH%/atarilynx", ".lnx .LNX .zip .ZIP .7z .7Z", emptyList(), "atarilynx", "atarilynx"),
+            GameSystem("atari2600", "Atari 2600", "%ROMPATH%/atari2600", ".a26 .A26 .bin .BIN .7z .7Z .zip .ZIP", emptyList(), "atari2600", "atari2600"),
+            GameSystem("atari5200", "Atari 5200", "%ROMPATH%/atari5200", ".a52 .A52 .atr .ATR .atx .ATX .bin .BIN .car .CAR .cas .CAS .cdm .CDM .com .COM .rom .ROM .xex .XEX .xfd .XFD .7z .7Z .zip .ZIP", emptyList(), "atari5200", "atari5200"),
+            GameSystem("atari7800", "Atari 7800", "%ROMPATH%/atari7800", ".a78 .A78 .bin .BIN .7z .7Z .zip .ZIP", emptyList(), "atari7800", "atari7800"),
+            GameSystem("atarilynx", "Atari Lynx", "%ROMPATH%/atarilynx", ".lnx .LNX .lyx .LYX .o .O .7z .7Z .zip .ZIP", emptyList(), "atarilynx", "atarilynx"),
 
             // Arcade
-            GameSystem("arcade", "Arcade", "%ROMPATH%/arcade", ".zip .ZIP .7z .7Z", emptyList(), "arcade", "arcade"),
-            GameSystem("mame", "MAME", "%ROMPATH%/mame", ".zip .ZIP .7z .7Z", emptyList(), "mame", "mame"),
-            GameSystem("fbneo", "FinalBurn Neo", "%ROMPATH%/fbneo", ".zip .ZIP .7z .7Z", emptyList(), "fbneo", "fbneo"),
-            GameSystem("neogeo", "Neo Geo", "%ROMPATH%/neogeo", ".zip .ZIP .7z .7Z", emptyList(), "neogeo", "neogeo"),
+            GameSystem("arcade", "Arcade", "%ROMPATH%/arcade", ".cmd .CMD .neo .NEO .7z .7Z .zip .ZIP", emptyList(), "arcade", "arcade"),
+            GameSystem("mame", "MAME", "%ROMPATH%/mame", ".cmd .CMD .neo .NEO .7z .7Z .zip .ZIP", emptyList(), "mame", "mame"),
+            GameSystem("fbneo", "FinalBurn Neo", "%ROMPATH%/fbneo", ".7z .7Z .zip .ZIP", emptyList(), "fbneo", "fbneo"),
+            GameSystem("neogeo", "Neo Geo", "%ROMPATH%/neogeo", ".neo .NEO .7z .7Z .zip .ZIP", emptyList(), "neogeo", "neogeo"),
 
             // Computers
-            GameSystem("dos", "DOS", "%ROMPATH%/dos", ".bat .BAT .com .COM .exe .EXE .dosz .DOSZ", emptyList(), "dos", "dos"),
+            GameSystem("dos", "DOS", "%ROMPATH%/dos", ".bat .BAT .com .COM .conf .CONF .cue .CUE .dosz .DOSZ .exe .EXE .img .IMG .iso .ISO .7z .7Z .zip .ZIP", emptyList(), "dos", "dos"),
             GameSystem("windows", "Windows", "%ROMPATH%/windows", ".exe .EXE .bat .BAT .lnk .LNK .msi .MSI", emptyList(), "windows", "windows"),
             GameSystem("pc", "PC", "%ROMPATH%/pc", ".exe .EXE .bat .BAT .lnk .LNK .msi .MSI", emptyList(), "pc", "pc"),
-            GameSystem("amiga", "Commodore Amiga", "%ROMPATH%/amiga", ".adf .ADF .adz .ADZ .dms .DMS .hdf .HDF .ipf .IPF", emptyList(), "amiga", "amiga"),
-            GameSystem("c64", "Commodore 64", "%ROMPATH%/c64", ".d64 .D64 .t64 .T64 .prg .PRG .crt .CRT .tap .TAP", emptyList(), "c64", "c64"),
-            GameSystem("scummvm", "ScummVM", "%ROMPATH%/scummvm", ".scummvm .SCUMMVM", emptyList(), "scummvm", "scummvm"),
+            GameSystem("amiga", "Commodore Amiga", "%ROMPATH%/amiga", ".adf .ADF .adz .ADZ .ccd .CCD .chd .CHD .cue .CUE .dms .DMS .fdi .FDI .hdf .HDF .hdz .HDZ .ipf .IPF .iso .ISO .lha .LHA .m3u .M3U .mds .MDS .nrg .NRG .rp9 .RP9 .uae .UAE .7z .7Z .zip .ZIP", emptyList(), "amiga", "amiga"),
+            GameSystem("c64", "Commodore 64", "%ROMPATH%/c64", ".bin .BIN .cmd .CMD .crt .CRT .d2m .D2M .d4m .D4M .d64 .D64 .d6z .D6Z .d71 .D71 .d7z .D7Z .d80 .D80 .d81 .D81 .d82 .D82 .d8z .D8Z .g41 .G41 .g4z .G4Z .g64 .G64 .g6z .G6Z .gz .GZ .lnx .LNX .m3u .M3U .nbz .NBZ .nib .NIB .p00 .P00 .prg .PRG .t64 .T64 .tap .TAP .vfl .VFL .vsf .VSF .x64 .X64 .x6z .X6Z .7z .7Z .zip .ZIP", emptyList(), "c64", "c64"),
+            GameSystem("scummvm", "ScummVM", "%ROMPATH%/scummvm", ".scummvm .SCUMMVM .svm .SVM", emptyList(), "scummvm", "scummvm"),
 
             // Other Handhelds
-            GameSystem("wonderswan", "WonderSwan", "%ROMPATH%/wonderswan", ".ws .WS .zip .ZIP .7z .7Z", emptyList(), "wonderswan", "wonderswan"),
-            GameSystem("wonderswancolor", "WonderSwan Color", "%ROMPATH%/wonderswancolor", ".wsc .WSC .zip .ZIP .7z .7Z", emptyList(), "wonderswancolor", "wonderswancolor"),
-            GameSystem("ngp", "Neo Geo Pocket", "%ROMPATH%/ngp", ".ngp .NGP .zip .ZIP .7z .7Z", emptyList(), "ngp", "ngp"),
-            GameSystem("ngpc", "Neo Geo Pocket Color", "%ROMPATH%/ngpc", ".ngc .NGC .ngpc .NGPC .zip .ZIP .7z .7Z", emptyList(), "ngpc", "ngpc"),
+            GameSystem("wonderswan", "WonderSwan", "%ROMPATH%/wonderswan", ".pc2 .PC2 .ws .WS .7z .7Z .zip .ZIP", emptyList(), "wonderswan", "wonderswan"),
+            GameSystem("wonderswancolor", "WonderSwan Color", "%ROMPATH%/wonderswancolor", ".pc2 .PC2 .ws .WS .wsc .WSC .7z .7Z .zip .ZIP", emptyList(), "wonderswancolor", "wonderswancolor"),
+            GameSystem("ngp", "Neo Geo Pocket", "%ROMPATH%/ngp", ".ngc .NGC .ngp .NGP .ngpc .NGPC .npc .NPC .7z .7Z .zip .ZIP", emptyList(), "ngp", "ngp"),
+            GameSystem("ngpc", "Neo Geo Pocket Color", "%ROMPATH%/ngpc", ".ngc .NGC .ngp .NGP .ngpc .NGPC .npc .NPC .7z .7Z .zip .ZIP", emptyList(), "ngpc", "ngpc"),
 
             // NEC
-            GameSystem("pcengine", "PC Engine", "%ROMPATH%/pcengine", ".pce .PCE .zip .ZIP .7z .7Z", emptyList(), "pcengine", "pcengine"),
-            GameSystem("tg16", "TurboGrafx-16", "%ROMPATH%/tg16", ".pce .PCE .zip .ZIP .7z .7Z", emptyList(), "tg16", "tg16")
+            GameSystem("pcengine", "PC Engine", "%ROMPATH%/pcengine", ".ccd .CCD .chd .CHD .cue .CUE .img .IMG .iso .ISO .m3u .M3U .pce .PCE .rom .ROM .sgx .SGX .toc .TOC .7z .7Z .zip .ZIP", emptyList(), "pcengine", "pcengine"),
+            GameSystem("tg16", "TurboGrafx-16", "%ROMPATH%/tg16", ".ccd .CCD .chd .CHD .cue .CUE .img .IMG .iso .ISO .m3u .M3U .pce .PCE .rom .ROM .sgx .SGX .toc .TOC .7z .7Z .zip .ZIP", emptyList(), "tg16", "tg16")
         )
     }
 
