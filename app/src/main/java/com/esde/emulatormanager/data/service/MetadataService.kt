@@ -1148,19 +1148,7 @@ class MetadataService @Inject constructor(
 
     // ==================== ScreenScraper / PS Vita ====================
 
-    /** True when a registered developer ID is configured (required for API access). */
-    fun hasScreenScraperDevCredentials(): Boolean = screenScraperService.hasDevCredentials()
-
-    /** Store developer ID + password (registered at screenscraper.fr). */
-    fun setScreenScraperDevCredentials(devId: String, devPass: String) {
-        screenScraperService.setDevCredentials(devId, devPass)
-    }
-
-    fun getScreenScraperDevId(): String? = screenScraperService.getStoredDevId()
-
-    fun clearScreenScraperDevCredentials() = screenScraperService.clearDevCredentials()
-
-    /** True when a user account (ssid/sspassword) is configured (higher rate limits). */
+    /** True when a ScreenScraper user account is configured (higher rate limits). */
     fun hasScreenScraperCredentials(): Boolean = screenScraperService.hasCredentials()
 
     fun setScreenScraperCredentials(username: String, password: String) {

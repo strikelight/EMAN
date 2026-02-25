@@ -45,30 +45,9 @@ class ScreenScraperService @Inject constructor(
     private val prefs = context.getSharedPreferences("screenscraper_prefs", Context.MODE_PRIVATE)
     private val PREF_USERNAME = "ss_username"
     private val PREF_PASSWORD = "ss_password"
-    private val PREF_DEV_ID   = "ss_devid"
-    private val PREF_DEV_PASS = "ss_devpass"
-
-    // ---- Developer credentials (required for all API calls) ----
-
-    fun setDevCredentials(devId: String, devPass: String) {
-        prefs.edit()
-            .putString(PREF_DEV_ID, devId.trim())
-            .putString(PREF_DEV_PASS, devPass.trim())
-            .apply()
-    }
-
-    /** True when a registered developer ID has been entered. Required for the API to work. */
-    fun hasDevCredentials(): Boolean =
-        !prefs.getString(PREF_DEV_ID, null).isNullOrBlank()
-
-    fun getStoredDevId(): String? =
-        prefs.getString(PREF_DEV_ID, null)?.takeIf { it.isNotBlank() }
-
-    fun clearDevCredentials() {
-        prefs.edit().remove(PREF_DEV_ID).remove(PREF_DEV_PASS).apply()
-    }
 
     // ---- User account credentials (optional, increases rate limits) ----
+    // DEV_ID / DEV_PASS are hardcoded — register at screenscraper.fr to get a devpassword.
 
     fun setCredentials(username: String, password: String) {
         prefs.edit()
@@ -278,11 +257,8 @@ class ScreenScraperService @Inject constructor(
 
     /** Append common auth params to a URL builder. */
     private fun appendAuthParams(sb: StringBuilder) {
-        // Use stored devid/devpass if set, otherwise fall back to compiled defaults
-        val devId   = prefs.getString(PREF_DEV_ID,   null)?.takeIf { it.isNotBlank() } ?: DEV_ID
-        val devPass = prefs.getString(PREF_DEV_PASS,  null)?.takeIf { it.isNotBlank() } ?: DEV_PASS
-        sb.append("&devid=").append(URLEncoder.encode(devId, "UTF-8"))
-        sb.append("&devpassword=").append(URLEncoder.encode(devPass, "UTF-8"))
+        sb.append("&devid=").append(URLEncoder.encode(DEV_ID, "UTF-8"))
+        sb.append("&devpassword=").append(URLEncoder.encode(DEV_PASS, "UTF-8"))
         sb.append("&softname=").append(SOFT_NAME)
         sb.append("&output=json")
         val username = prefs.getString(PREF_USERNAME, null)
