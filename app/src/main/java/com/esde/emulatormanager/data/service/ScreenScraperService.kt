@@ -325,7 +325,17 @@ class ScreenScraperService @Inject constructor(
 
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val responseText = connection.inputStream.bufferedReader().readText()
-                val json = JSONObject(responseText)
+
+                // ScreenScraper sometimes returns plain-text errors with HTTP 200
+                // (e.g. unregistered devid, API key issues). Catch JSON parse failures.
+                val json = try {
+                    JSONObject(responseText)
+                } catch (e: Exception) {
+                    val snippet = responseText.take(300)
+                    Log.w(TAG, "ScreenScraper returned non-JSON (200): $snippet")
+                    throw ScreenScraperApiException("ScreenScraper error: $snippet")
+                }
+
                 val response = json.optJSONObject("response")
 
                 // Check for server-side error embedded in a 200 response
