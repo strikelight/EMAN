@@ -164,13 +164,26 @@ fun AppNavigation(
     val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
 
     // Navigation click handler
+    // Special case: if tapping "Games" while already in a Games sub-section,
+    // navigate back to the Games hub instead of doing a full root pop.
     val onNavItemClick: (Screen) -> Unit = { screen ->
-        navController.navigate(screen.route) {
-            popUpTo(navController.graph.findStartDestination().id) {
-                saveState = true
+        val currentRoute = currentDestination?.route
+        val isInGamesSubSection = currentRoute in gamesSubRoutes && currentRoute != Screen.Games.route
+
+        if (screen == Screen.Games && isInGamesSubSection) {
+            // Pop back to the Games hub
+            navController.navigate(Screen.Games.route) {
+                popUpTo(Screen.Games.route) { inclusive = false }
+                launchSingleTop = true
             }
-            launchSingleTop = true
-            restoreState = true
+        } else {
+            navController.navigate(screen.route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
         }
     }
 
@@ -511,7 +524,8 @@ private fun NavHostContent(
                 onClearPendingReScrape = viewModel::clearPendingReScrapeVitaGame,
                 onSavePath = viewModel::saveVitaRomsPath,
                 onSetScreenScraperCredentials = viewModel::setScreenScraperCredentials,
-                currentScreenScraperUsername = viewModel.getScreenScraperUsername()
+                currentScreenScraperUsername = viewModel.getScreenScraperUsername(),
+                getArtworkPath = viewModel::getVitaGameArtworkPath
             )
         }
 

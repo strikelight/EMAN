@@ -1,10 +1,13 @@
 package com.esde.emulatormanager.ui.screens
 
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +50,7 @@ fun VitaGamesScreen(
     onSavePath: (String) -> Unit = {},
     onSetScreenScraperCredentials: (String, String) -> Unit = { _, _ -> },
     currentScreenScraperUsername: String? = null,
+    getArtworkPath: (String) -> String? = { null },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -216,8 +223,10 @@ fun VitaGamesScreen(
                 }
             } else {
                 items(uiState.games, key = { it.filePath }) { game ->
+                    val gameId = java.io.File(game.filePath).nameWithoutExtension
                     VitaGameItem(
                         game = game,
+                        artworkPath = getArtworkPath(gameId),
                         onRemove = { onRemoveGame(game) },
                         onReScrape = { onSetPendingReScrapeGame(game) }
                     )
@@ -516,10 +525,12 @@ private fun VitaEmptyState(
 @Composable
 private fun VitaGameItem(
     game: VitaGame,
+    artworkPath: String? = null,
     onRemove: () -> Unit,
     onReScrape: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showMenu by remember { mutableStateOf(false) }
     var showRemoveConfirm by remember { mutableStateOf(false) }
 
     if (showRemoveConfirm) {
@@ -536,74 +547,133 @@ private fun VitaGameItem(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
-                ) {
-                    Text("Remove")
-                }
+                ) { Text("Remove") }
             },
             dismissButton = {
-                TextButton(onClick = { showRemoveConfirm = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showRemoveConfirm = false }) { Text("Cancel") }
             }
         )
     }
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    // Load artwork bitmap if available
+    val artworkBitmap = remember(artworkPath) {
+        artworkPath?.let { path ->
+            try {
+                val file = java.io.File(path)
+                if (file.exists()) BitmapFactory.decodeFile(path)?.asImageBitmap() else null
+            } catch (e: Exception) { null }
+        }
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        // Artwork or fallback icon
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
         ) {
-            // Metadata status indicator
-            Icon(
-                imageVector = if (game.hasMetadata) Icons.Filled.CheckCircle else Icons.Outlined.Info,
-                contentDescription = if (game.hasMetadata) "Has metadata" else "No metadata",
-                tint = if (game.hasMetadata) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(20.dp)
-            )
+            if (artworkBitmap != null) {
+                Image(
+                    bitmap = artworkBitmap,
+                    contentDescription = game.displayName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.SportsEsports,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
 
-            Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = game.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
-                // Title ID chip
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Text(
-                        text = game.titleId,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
+                if (game.hasMetadata) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    ) {
+                        Text(
+                            text = "SCRAPED",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
+            // Title ID as subtitle
+            Text(
+                text = game.titleId,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
 
-            // Re-scrape button
-            IconButton(onClick = onReScrape) {
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Remove button
+        IconButton(
+            onClick = { showRemoveConfirm = true },
+            colors = IconButtonDefaults.iconButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.RemoveCircle,
+                contentDescription = "Remove from ES-DE"
+            )
+        }
+
+        // Options menu
+        Box {
+            IconButton(onClick = { showMenu = true }) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Re-scrape metadata",
-                    tint = MaterialTheme.colorScheme.primary
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "More options"
                 )
             }
-
-            // Remove button
-            IconButton(onClick = { showRemoveConfirm = true }) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Remove",
-                    tint = MaterialTheme.colorScheme.error
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Re-scrape metadata") },
+                    onClick = {
+                        showMenu = false
+                        onReScrape()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null
+                        )
+                    }
                 )
             }
         }

@@ -1588,11 +1588,21 @@ class MainViewModel @Inject constructor(
 
     fun saveVitaRomsPath(path: String) {
         vitaGamesService.setCustomPath(path)
-        _vitaGamesState.update {
-            it.copy(
-                esdeVitaPath = path,
-                successMessage = "PS Vita ROM path updated"
-            )
+        // Update path immediately, then rescan games from the new location
+        viewModelScope.launch {
+            _vitaGamesState.update { it.copy(isLoading = true, esdeVitaPath = path) }
+            withContext(Dispatchers.IO) {
+                val games = vitaGamesService.scanVitaGames()
+                val count = metadataService.getVitaGamesWithoutMetadataCount()
+                _vitaGamesState.update {
+                    it.copy(
+                        isLoading = false,
+                        games = games,
+                        gamesWithoutMetadataCount = count,
+                        successMessage = "PS Vita ROM path updated"
+                    )
+                }
+            }
         }
     }
 
@@ -1835,6 +1845,13 @@ class MainViewModel @Inject constructor(
 
     fun getVitaGamesInEsdeCount(): Int {
         return _vitaGamesState.value.games.size
+    }
+
+    /**
+     * Get the artwork path for a PS Vita game (cover image from ES-DE media directory).
+     */
+    fun getVitaGameArtworkPath(gameId: String): String? {
+        return vitaGamesService.getArtworkPath(gameId)
     }
 
     /**

@@ -225,6 +225,22 @@ class VitaGamesService @Inject constructor(
     }
 
     /**
+     * Get the artwork (cover) path for a PS Vita game from the ES-DE media directory.
+     * @param gameId The .psvita filename without extension
+     */
+    fun getArtworkPath(gameId: String): String? {
+        val mediaPath = esdeConfigService.getMediaDirectory("psvita", "covers")
+        if (mediaPath == null || !mediaPath.exists()) return null
+
+        val extensions = listOf(".jpg", ".jpeg", ".png", ".webp")
+        for (ext in extensions) {
+            val artworkFile = File(mediaPath, "$gameId$ext")
+            if (artworkFile.exists()) return artworkFile.absolutePath
+        }
+        return null
+    }
+
+    /**
      * Generate a safe filename from a display name (same pattern as WindowsGamesService).
      */
     private fun generateSafeFileName(name: String): String {
