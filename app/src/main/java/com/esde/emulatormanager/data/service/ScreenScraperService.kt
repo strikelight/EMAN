@@ -29,7 +29,10 @@ class ScreenScraperService @Inject constructor(
 ) {
     companion object {
         private const val TAG = "ScreenScraperService"
-        private const val BASE_URL = "https://www.screenscraper.fr/api2/jeuInfos.php"
+        // jeuInfos.php — fetch full details by gameid (or by ROM hash/name)
+        private const val GAME_INFO_URL = "https://www.screenscraper.fr/api2/jeuInfos.php"
+        // jeuRecherche.php — search by game name, returns up to 30 results ranked by probability
+        private const val SEARCH_URL = "https://www.screenscraper.fr/api2/jeuRecherche.php"
         private const val VITA_SYSTEM_ID = 62
         private const val DEV_ID = "EMAN"
         private const val DEV_PASS = ""
@@ -63,28 +66,38 @@ class ScreenScraperService @Inject constructor(
     }
 
     /**
-     * Search for a PS Vita game by name.
-     * ScreenScraper jeuInfos returns the single best match, not a list.
-     * Returns a list of 0 or 1 result.
+     * Search for a PS Vita game by name using jeuRecherche.php.
+     * Returns up to 30 results ranked by match probability.
+     * Each result has the game ID needed to fetch full details.
      */
     suspend fun searchVitaGame(name: String): List<VitaSearchResult> = withContext(Dispatchers.IO) {
         try {
-            val responseJson = callApi(name) ?: return@withContext emptyList()
-            val jeu = responseJson.optJSONObject("jeu") ?: return@withContext emptyList()
+            val responseJson = callSearch(name) ?: return@withContext emptyList()
+            val jeuxArray = responseJson.optJSONArray("jeux") ?: return@withContext emptyList()
 
-            val ssId = jeu.optInt("id", -1).toString()
-            if (ssId == "-1") return@withContext emptyList()
+            val results = mutableListOf<VitaSearchResult>()
+            for (i in 0 until jeuxArray.length()) {
+                val jeu = jeuxArray.optJSONObject(i) ?: continue
+                val ssId = jeu.optInt("id", -1)
+                if (ssId == -1) continue
 
-            val gameName = extractPreferredText(jeu.optJSONArray("noms"), "region", "wor", "us")
-                ?: jeu.optString("nom", "").takeIf { it.isNotBlank() }
-                ?: return@withContext emptyList()
+                // Names can be a string or array of {region, text} objects
+                val gameName = when {
+                    jeu.has("noms") -> extractPreferredText(jeu.optJSONArray("noms"), "region", "wor", "us")
+                        ?: jeu.optString("nom", "").takeIf { it.isNotBlank() }
+                    jeu.has("nom") -> jeu.optString("nom", "").takeIf { it.isNotBlank() }
+                    else -> null
+                } ?: continue
 
-            val year = extractPreferredText(jeu.optJSONArray("dates"), "region", "wor", "us")
-                ?.take(4)
+                val year = when {
+                    jeu.has("dates") -> extractPreferredText(jeu.optJSONArray("dates"), "region", "wor", "us")?.take(4)
+                    jeu.has("date") -> jeu.optString("date", "").takeIf { it.isNotBlank() }?.take(4)
+                    else -> null
+                }
 
-            val coverUrl = extractMediaUrl(jeu.optJSONArray("medias"), "box-2D")
-
-            listOf(VitaSearchResult(ssId = ssId, name = gameName, year = year, coverUrl = coverUrl))
+                results.add(VitaSearchResult(ssId = ssId.toString(), name = gameName, year = year))
+            }
+            results
         } catch (e: Exception) {
             Log.e(TAG, "Error searching ScreenScraper: ${e.message}", e)
             emptyList()
@@ -149,57 +162,32 @@ class ScreenScraperService @Inject constructor(
     }
 
     /**
-     * Search by name and return full details in one call.
-     * Used when scraping metadata without prior search.
+     * Search by name and return full details.
+     * Uses jeuRecherche.php to find the best match, then jeuInfos.php by gameid for full details.
+     * This is the correct approach for name-based lookups without a ROM file hash.
      */
     suspend fun getVitaGameDetailsByName(name: String): VitaGameDetails? = withContext(Dispatchers.IO) {
         try {
-            val responseJson = callApi(name) ?: return@withContext null
-            val jeu = responseJson.optJSONObject("jeu") ?: return@withContext null
+            // Step 1: Search by name to get the game ID
+            val searchResponse = callSearch(name) ?: run {
+                Log.w(TAG, "No search response for: $name")
+                return@withContext null
+            }
+            val jeuxArray = searchResponse.optJSONArray("jeux")
+            if (jeuxArray == null || jeuxArray.length() == 0) {
+                Log.w(TAG, "No search results for: $name")
+                return@withContext null
+            }
 
-            val ssId = jeu.optInt("id", -1).toString()
-            val gameName = extractPreferredText(jeu.optJSONArray("noms"), "region", "wor", "us")
-                ?: name
+            // Take the best match (first result, ranked by probability)
+            val firstResult = jeuxArray.optJSONObject(0) ?: return@withContext null
+            val gameId = firstResult.optInt("id", -1)
+            if (gameId == -1) return@withContext null
 
-            val desc = extractPreferredText(jeu.optJSONArray("synopsis"), "langue", "en", "en")
+            Log.d(TAG, "Found game ID $gameId for '$name', fetching full details")
 
-            val ratingRaw = jeu.optJSONObject("note")?.optString("text")?.toFloatOrNull()
-            val rating = ratingRaw?.div(20.0f)?.coerceIn(0.0f, 1.0f)
-
-            val developer = jeu.optJSONObject("developpeur")?.optString("text")?.takeIf { it.isNotBlank() }
-            val publisher = jeu.optJSONObject("editeur")?.optString("text")?.takeIf { it.isNotBlank() }
-
-            val genre = try {
-                jeu.optJSONArray("genres")
-                    ?.optJSONObject(0)
-                    ?.optJSONArray("noms")
-                    ?.optJSONObject(0)
-                    ?.optString("text")
-                    ?.takeIf { it.isNotBlank() }
-            } catch (e: Exception) { null }
-
-            val dateRaw = extractPreferredText(jeu.optJSONArray("dates"), "region", "wor", "us")
-            val releaseDate = dateRaw?.let { convertDate(it) }
-
-            val medias = jeu.optJSONArray("medias")
-            val coverUrl = extractMediaUrl(medias, "box-2D")
-            val screenshotUrl = extractMediaUrl(medias, "ss")
-            val videoUrl = extractMediaUrl(medias, "video-normalized")
-                ?: extractMediaUrl(medias, "video")
-
-            VitaGameDetails(
-                ssId = ssId,
-                name = gameName,
-                desc = desc,
-                rating = rating,
-                developer = developer,
-                publisher = publisher,
-                genre = genre,
-                releaseDate = releaseDate,
-                coverUrl = coverUrl,
-                screenshotUrl = screenshotUrl,
-                videoUrl = videoUrl
-            )
+            // Step 2: Fetch full details by game ID
+            getVitaGameDetails(gameId.toString())
         } catch (e: Exception) {
             Log.e(TAG, "Error getting ScreenScraper details by name: ${e.message}", e)
             null
@@ -258,38 +246,52 @@ class ScreenScraperService @Inject constructor(
 
     // ==================== Private helpers ====================
 
-    private fun buildApiUrl(gameName: String? = null, gameId: String? = null): String {
-        val sb = StringBuilder(BASE_URL)
-        sb.append("?devid=").append(DEV_ID)
+    /** Append common auth params to a URL builder. */
+    private fun appendAuthParams(sb: StringBuilder) {
+        sb.append("&devid=").append(DEV_ID)
         sb.append("&devpassword=").append(DEV_PASS)
         sb.append("&softname=").append(SOFT_NAME)
         sb.append("&output=json")
-        sb.append("&systemeid=").append(VITA_SYSTEM_ID)
-
-        if (gameName != null) {
-            sb.append("&romnom=").append(URLEncoder.encode(gameName, "UTF-8"))
-        }
-        if (gameId != null) {
-            sb.append("&crc=&md5=&sha1=&romtaille=&gameid=").append(gameId)
-        }
-
         val username = prefs.getString(PREF_USERNAME, null)
         val password = prefs.getString(PREF_PASSWORD, null)
         if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
             sb.append("&ssid=").append(URLEncoder.encode(username, "UTF-8"))
             sb.append("&sspassword=").append(URLEncoder.encode(password, "UTF-8"))
         }
+    }
 
+    /**
+     * Build a jeuRecherche.php URL for name-based search.
+     * Uses `recherche` parameter — NOT `romnom`.
+     */
+    private fun buildSearchUrl(gameName: String): String {
+        val sb = StringBuilder(SEARCH_URL)
+        sb.append("?systemeid=").append(VITA_SYSTEM_ID)
+        sb.append("&recherche=").append(URLEncoder.encode(gameName, "UTF-8"))
+        appendAuthParams(sb)
         return sb.toString()
     }
 
-    private fun callApi(gameName: String): JSONObject? {
-        val url = buildApiUrl(gameName = gameName)
+    /**
+     * Build a jeuInfos.php URL for fetching full details by game ID.
+     */
+    private fun buildGameInfoUrl(gameId: String): String {
+        val sb = StringBuilder(GAME_INFO_URL)
+        sb.append("?systemeid=").append(VITA_SYSTEM_ID)
+        sb.append("&gameid=").append(gameId)
+        appendAuthParams(sb)
+        return sb.toString()
+    }
+
+    /** Call jeuRecherche.php — returns response JSON containing jeux[] array. */
+    private fun callSearch(gameName: String): JSONObject? {
+        val url = buildSearchUrl(gameName)
         return makeRequest(url)
     }
 
+    /** Call jeuInfos.php by game ID — returns response JSON containing jeu object. */
     private fun callApiById(gameId: String): JSONObject? {
-        val url = buildApiUrl(gameId = gameId)
+        val url = buildGameInfoUrl(gameId)
         return makeRequest(url)
     }
 
