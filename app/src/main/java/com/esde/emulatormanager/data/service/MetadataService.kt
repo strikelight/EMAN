@@ -1146,107 +1146,72 @@ class MetadataService @Inject constructor(
         return missingMetadata.size
     }
 
-    // ==================== ScreenScraper / PS Vita ====================
-
-    /** True when a ScreenScraper user account is configured (higher rate limits). */
-    fun hasScreenScraperCredentials(): Boolean = screenScraperService.hasCredentials()
-
-    fun setScreenScraperCredentials(username: String, password: String) {
-        screenScraperService.setCredentials(username, password)
-    }
-
-    fun getScreenScraperUsername(): String? = screenScraperService.getUsername()
-
-    fun clearScreenScraperCredentials() = screenScraperService.clearCredentials()
+    // ==================== IGDB / PS Vita ====================
+    // PS Vita scraping uses the same IGDB credentials as Android scraping.
+    // hasIgdbCredentials() / setIgdbCredentials() are defined in the IGDB/Android section above.
 
     /**
-     * Search ScreenScraper for a PS Vita game by name.
+     * Search IGDB for a PS Vita game by name.
      */
-    suspend fun searchVitaGame(name: String) = screenScraperService.searchVitaGame(name)
+    suspend fun searchVitaGame(name: String): MetadataResult = igdbService.searchVitaGame(name)
 
     /**
-     * Scrape and save metadata for a single PS Vita game.
+     * Scrape and save metadata for a single PS Vita game using IGDB.
      * @param game The VitaGame to scrape
      * @param options Scrape options controlling which media types to download
-     * @return True if metadata was successfully scraped and saved
+     * @return True if metadata was found and saved; false if not found
+     * @throws Exception if the IGDB API returns an error (credentials, network, etc.)
      */
     suspend fun scrapeAndSaveVitaMetadata(
         game: VitaGame,
         options: ScrapeOptions = ScrapeOptions()
     ): Boolean = withContext(Dispatchers.IO) {
-        val details = screenScraperService.getVitaGameDetailsByName(game.displayName)
-            ?: run {
-                Log.w(TAG, "No ScreenScraper results for Vita game: ${game.displayName}")
+        when (val result = igdbService.searchVitaGame(game.displayName)) {
+            is MetadataResult.NotFound -> {
+                Log.w(TAG, "No IGDB results for Vita game: ${game.displayName}")
                 return@withContext false
             }
-
-        val gameFileName = File(game.filePath).nameWithoutExtension
-        val gamePath = "./$gameFileName.psvita"
-
-        var metadata = GameMetadata(
-            path = gamePath,
-            name = details.name.ifBlank { game.displayName },
-            desc = if (options.scrapeMetadata) details.desc else null,
-            rating = if (options.scrapeMetadata) details.rating else null,
-            releasedate = if (options.scrapeMetadata) details.releaseDate else null,
-            developer = if (options.scrapeMetadata) details.developer else null,
-            publisher = if (options.scrapeMetadata) details.publisher else null,
-            genre = if (options.scrapeMetadata) details.genre else null
-        )
-
-        if (options.scrapeArtwork) {
-            // Download cover
-            details.coverUrl?.let { url ->
-                val coversDir = esdeConfigService.getMediaDirectory("psvita", "covers")
-                if (coversDir != null) {
-                    val destFile = File(coversDir, "$gameFileName.jpg")
-                    if (screenScraperService.downloadMedia(url, destFile)) {
-                        metadata = metadata.copy(image = "./media/covers/$gameFileName.jpg")
-                        Log.d(TAG, "Downloaded cover for Vita game: $gameFileName")
-                    }
-                }
+            is MetadataResult.Error -> {
+                throw Exception(result.message)
             }
+            is MetadataResult.Success -> {
+                val igdb = result.metadata
+                val gameFileName = File(game.filePath).nameWithoutExtension
+                val gamePath = "./$gameFileName.psvita"
 
-            // Download screenshot
-            details.screenshotUrl?.let { url ->
-                val screenshotsDir = esdeConfigService.getMediaDirectory("psvita", "screenshots")
-                if (screenshotsDir != null) {
-                    val destFile = File(screenshotsDir, "$gameFileName.jpg")
-                    if (screenScraperService.downloadMedia(url, destFile)) {
-                        metadata = metadata.copy(titlescreen = "./media/screenshots/$gameFileName.jpg")
-                        Log.d(TAG, "Downloaded screenshot for Vita game: $gameFileName")
+                var metadata = GameMetadata(
+                    path = gamePath,
+                    name = igdb.name.ifBlank { game.displayName },
+                    desc = if (options.scrapeMetadata) igdb.desc else null,
+                    rating = if (options.scrapeMetadata) igdb.rating else null,
+                    releasedate = if (options.scrapeMetadata) igdb.releasedate else null,
+                    developer = if (options.scrapeMetadata) igdb.developer else null,
+                    publisher = if (options.scrapeMetadata) igdb.publisher else null,
+                    genre = if (options.scrapeMetadata) igdb.genre else null,
+                    players = if (options.scrapeMetadata) igdb.players else null
+                )
+
+                if (options.scrapeArtwork) {
+                    igdb.image?.let { url ->
+                        val coverPath = igdbService.downloadCoverImage(url, "psvita", gameFileName)
+                        if (coverPath != null) {
+                            metadata = metadata.copy(image = "./media/covers/$gameFileName.jpg")
+                        }
                     }
+                    igdb.screenshotUrls?.let { urls ->
+                        val screenshotPath = igdbService.downloadScreenshots(urls, "psvita", gameFileName)
+                        if (screenshotPath != null) {
+                            metadata = metadata.copy(titlescreen = "./media/screenshots/$gameFileName.jpg")
+                        }
+                    }
+                    igdbService.generateMiximage("psvita", gameFileName)
                 }
-            }
 
-            // Generate miximage if we have artwork
-            val coversDir = esdeConfigService.getMediaDirectory("psvita", "covers")
-            val screenshotsDir = esdeConfigService.getMediaDirectory("psvita", "screenshots")
-            val miximagesDir = esdeConfigService.getMediaDirectory("psvita", "miximages")
-            if (coversDir != null && screenshotsDir != null && miximagesDir != null) {
-                val miximagePath = steamApiService.generateMiximage(coversDir, screenshotsDir, miximagesDir, gameFileName)
-                if (miximagePath != null) {
-                    Log.d(TAG, "Generated miximage for Vita game: $gameFileName")
-                }
+                gamelistService.writeGameMetadata("psvita", metadata)
+                Log.d(TAG, "Saved IGDB metadata for Vita game: ${igdb.name}")
+                true
             }
         }
-
-        if (options.scrapeVideos) {
-            details.videoUrl?.let { url ->
-                val videosDir = esdeConfigService.getMediaDirectory("psvita", "videos")
-                if (videosDir != null) {
-                    val destFile = File(videosDir, "$gameFileName.mp4")
-                    if (screenScraperService.downloadMedia(url, destFile)) {
-                        metadata = metadata.copy(video = "./media/videos/$gameFileName.mp4")
-                        Log.d(TAG, "Downloaded video for Vita game: $gameFileName")
-                    }
-                }
-            }
-        }
-
-        gamelistService.writeGameMetadata("psvita", metadata)
-        Log.d(TAG, "Saved ScreenScraper metadata for Vita game: ${metadata.name}")
-        true
     }
 
     /**

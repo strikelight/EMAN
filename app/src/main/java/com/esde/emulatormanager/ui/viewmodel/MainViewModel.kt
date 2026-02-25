@@ -9,7 +9,6 @@ import com.esde.emulatormanager.data.service.DeviceIdentificationService
 import com.esde.emulatormanager.data.service.GogApiService
 import com.esde.emulatormanager.data.service.MetadataService
 import com.esde.emulatormanager.data.service.ProfileService
-import com.esde.emulatormanager.data.service.ScreenScraperApiException
 import com.esde.emulatormanager.data.service.SteamApiService
 import com.esde.emulatormanager.data.service.VitaGamesService
 import com.esde.emulatormanager.data.service.WindowsGamesService
@@ -1554,7 +1553,7 @@ class MainViewModel @Inject constructor(
                 val vitaPath = vitaGamesService.getEsdeVitaPath()
                 val games = vitaGamesService.scanVitaGames()
                 val count = metadataService.getVitaGamesWithoutMetadataCount()
-                val hasCredentials = metadataService.hasScreenScraperCredentials()
+                val hasCredentials = metadataService.hasIgdbCredentials()
 
                 _vitaGamesState.update {
                     it.copy(
@@ -1562,7 +1561,7 @@ class MainViewModel @Inject constructor(
                         games = games,
                         esdeVitaPath = vitaPath,
                         gamesWithoutMetadataCount = count,
-                        hasScreenScraperCredentials = hasCredentials
+                        hasIgdbCredentials = hasCredentials
                     )
                 }
             }
@@ -1622,7 +1621,7 @@ class MainViewModel @Inject constructor(
 
                         // Auto-scrape if we have ScreenScraper credentials
                         var metadataScraped = false
-                        if (metadataService.hasScreenScraperCredentials()) {
+                        if (metadataService.hasIgdbCredentials()) {
                             try {
                                 metadataScraped = metadataService.scrapeAndSaveVitaMetadata(
                                     game,
@@ -1693,9 +1692,24 @@ class MainViewModel @Inject constructor(
 
             withContext(Dispatchers.IO) {
                 val results = try {
-                    metadataService.searchVitaGame(query)
+                    when (val result = metadataService.searchVitaGame(query)) {
+                        is MetadataResult.Success -> listOf(
+                            VitaSearchResult(
+                                ssId = "igdb",
+                                name = result.metadata.name,
+                                year = result.metadata.releasedate?.take(4)
+                            )
+                        )
+                        is MetadataResult.NotFound -> emptyList()
+                        is MetadataResult.Error -> {
+                            _vitaGamesState.update {
+                                it.copy(isSearching = false, error = "IGDB search failed: ${result.message}")
+                            }
+                            return@withContext
+                        }
+                    }
                 } catch (e: Exception) {
-                    android.util.Log.e("MainViewModel", "ScreenScraper search error: ${e.message}", e)
+                    android.util.Log.e("MainViewModel", "IGDB search error: ${e.message}", e)
                     _vitaGamesState.update {
                         it.copy(isSearching = false, error = "Search failed: ${e.message}")
                     }
@@ -1719,11 +1733,11 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val count = metadataService.getVitaGamesWithoutMetadataCount()
-                val hasCredentials = metadataService.hasScreenScraperCredentials()
+                val hasCredentials = metadataService.hasIgdbCredentials()
                 _vitaGamesState.update {
                     it.copy(
                         gamesWithoutMetadataCount = count,
-                        hasScreenScraperCredentials = hasCredentials
+                        hasIgdbCredentials = hasCredentials
                     )
                 }
             }
@@ -1776,13 +1790,9 @@ class MainViewModel @Inject constructor(
                 var apiError: String? = null
                 val success = try {
                     metadataService.scrapeAndSaveVitaMetadata(gameToScrape, options)
-                } catch (e: ScreenScraperApiException) {
-                    android.util.Log.w("MainViewModel", "ScreenScraper API error: ${e.message}")
-                    apiError = e.message
-                    false
                 } catch (e: Exception) {
                     android.util.Log.e("MainViewModel", "Vita re-scrape error: ${e.message}", e)
-                    apiError = "Scrape failed: ${e.message}"
+                    apiError = e.message
                     false
                 }
 
@@ -1793,7 +1803,7 @@ class MainViewModel @Inject constructor(
                         games = games,
                         gamesWithoutMetadataCount = metadataService.getVitaGamesWithoutMetadataCount(),
                         successMessage = if (success) "Re-scraped metadata for ${game.displayName}" else null,
-                        error = if (!success) apiError ?: "No metadata found for \"${game.displayName}\" on ScreenScraper" else null
+                        error = if (!success) apiError ?: "No metadata found for \"${game.displayName}\" on IGDB" else null
                     )
                 }
             }
@@ -1828,12 +1838,13 @@ class MainViewModel @Inject constructor(
         _vitaGamesState.update { it.copy(scrapeOptions = options, showScrapeOptionsDialog = false) }
     }
 
-    fun setScreenScraperCredentials(username: String, password: String) {
-        metadataService.setScreenScraperCredentials(username, password)
-        _vitaGamesState.update { it.copy(hasScreenScraperCredentials = true) }
+    // IGDB credentials for Vita scraping — shared with Android scraping
+    fun setVitaIgdbCredentials(clientId: String, clientSecret: String) {
+        metadataService.setIgdbCredentials(clientId, clientSecret)
+        _vitaGamesState.update { it.copy(hasIgdbCredentials = true) }
     }
 
-    fun getScreenScraperUsername(): String? = metadataService.getScreenScraperUsername()
+    fun getVitaIgdbClientId(): String? = metadataService.getIgdbClientId()
 
     // ========== Games Hub Counts ==========
 

@@ -48,8 +48,8 @@ fun VitaGamesScreen(
     onReScrapeGame: (VitaGame, String?) -> Unit = { _, _ -> },
     onClearPendingReScrape: () -> Unit = {},
     onSavePath: (String) -> Unit = {},
-    onSetScreenScraperCredentials: (String, String) -> Unit = { _, _ -> },
-    currentScreenScraperUsername: String? = null,
+    onSetIgdbCredentials: (String, String) -> Unit = { _, _ -> },
+    currentIgdbClientId: String? = null,
     getArtworkPath: (String) -> String? = { null },
     modifier: Modifier = Modifier
 ) {
@@ -195,11 +195,11 @@ fun VitaGamesScreen(
                 )
             }
 
-            // ScreenScraper credentials card
+            // IGDB credentials card
             item {
-                ScreenScraperCredentialsCard(
-                    currentUsername = currentScreenScraperUsername,
-                    onSetCredentials = onSetScreenScraperCredentials
+                IgdbCredentialsCard(
+                    currentClientId = currentIgdbClientId,
+                    onSetCredentials = onSetIgdbCredentials
                 )
             }
 
@@ -210,7 +210,7 @@ fun VitaGamesScreen(
                         gamesWithoutMetadataCount = uiState.gamesWithoutMetadataCount,
                         isScraping = uiState.isScraping,
                         scrapeProgress = uiState.scrapeProgress,
-                        hasCredentials = uiState.hasScreenScraperCredentials,
+                        hasCredentials = uiState.hasIgdbCredentials,
                         onScrapeClick = onScrapeMetadata
                     )
                 }
@@ -292,37 +292,42 @@ private fun VitaPathCard(
 }
 
 @Composable
-private fun ScreenScraperCredentialsCard(
-    currentUsername: String?,
+private fun IgdbCredentialsCard(
+    currentClientId: String?,
     onSetCredentials: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var clientId by remember { mutableStateOf("") }
+    var clientSecret by remember { mutableStateOf("") }
 
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("ScreenScraper Account (Optional)") },
+            title = { Text("IGDB / Twitch API Credentials") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Adding your ScreenScraper account removes anonymous rate limits (approx. 20 requests/day). Leave blank to use anonymous access.",
+                        text = "PS Vita metadata is fetched from IGDB, which requires a free Twitch Developer account.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "1. Go to dev.twitch.tv/console\n2. Register an application\n3. Copy your Client ID and generate a Client Secret",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        label = { Text("Username") },
+                        value = clientId,
+                        onValueChange = { clientId = it },
+                        label = { Text("Client ID") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Password") },
+                        value = clientSecret,
+                        onValueChange = { clientSecret = it },
+                        label = { Text("Client Secret") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -331,8 +336,8 @@ private fun ScreenScraperCredentialsCard(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (username.isNotBlank()) {
-                            onSetCredentials(username.trim(), password.trim())
+                        if (clientId.isNotBlank() && clientSecret.isNotBlank()) {
+                            onSetCredentials(clientId.trim(), clientSecret.trim())
                         }
                         showDialog = false
                     }
@@ -363,33 +368,34 @@ private fun ScreenScraperCredentialsCard(
             Icon(
                 imageVector = Icons.Outlined.AccountCircle,
                 contentDescription = null,
-                tint = if (currentUsername != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (currentClientId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "ScreenScraper",
+                    text = "IGDB / Twitch API",
                     style = MaterialTheme.typography.titleSmall
                 )
                 Text(
-                    text = if (currentUsername != null) {
-                        "Logged in as $currentUsername"
+                    text = if (currentClientId != null) {
+                        "Configured (ID: …${currentClientId.takeLast(6)})"
                     } else {
-                        "Anonymous (limited to ~20 requests/day)"
+                        "Required for PS Vita metadata scraping"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (currentClientId != null) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.error
                 )
             }
             TextButton(
                 onClick = {
-                    username = currentUsername ?: ""
-                    password = ""
+                    clientId = ""
+                    clientSecret = ""
                     showDialog = true
                 }
             ) {
-                Text(if (currentUsername != null) "Change" else "Login")
+                Text(if (currentClientId != null) "Change" else "Configure")
             }
         }
     }
@@ -514,7 +520,7 @@ private fun VitaEmptyState(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Tap + to add a game via ScreenScraper search or manual Title ID entry",
+                text = "Tap + to add a game via IGDB search or manual Title ID entry",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
@@ -692,7 +698,7 @@ private fun VitaScrapeSettingsDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Choose what to download when scraping PS Vita games from ScreenScraper.",
+                    text = "Choose what to download when scraping PS Vita games from IGDB.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -770,7 +776,7 @@ private fun VitaReScrapeDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Re-scrape metadata for \"${game.displayName}\" from ScreenScraper. You can adjust the search term if the game wasn't found.",
+                    text = "Re-scrape metadata for \"${game.displayName}\" from IGDB. You can adjust the search term if the game wasn't found.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

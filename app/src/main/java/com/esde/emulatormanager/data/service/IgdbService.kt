@@ -38,6 +38,7 @@ class IgdbService @Inject constructor(
         private const val PLATFORM_ANDROID = 34
         private const val PLATFORM_IOS = 39
         private const val PLATFORM_PC = 6
+        private const val PLATFORM_VITA = 46
 
         // Cache duration for access token (slightly less than actual expiry)
         private const val TOKEN_CACHE_DURATION_MS = 50 * 24 * 60 * 60 * 1000L // 50 days
@@ -129,6 +130,62 @@ class IgdbService @Inject constructor(
             parseIgdbResponse(response, gameName)
         } catch (e: Exception) {
             Log.e(TAG, "Error searching IGDB: ${e.message}", e)
+            MetadataResult.Error("Failed to search IGDB: ${e.message}")
+        }
+    }
+
+    /**
+     * Search for a PS Vita game by name and return metadata.
+     * Uses IGDB platform ID 46 (PlayStation Vita).
+     * Falls back to a platform-agnostic search if no Vita-specific results are found.
+     */
+    suspend fun searchVitaGame(gameName: String): MetadataResult = withContext(Dispatchers.IO) {
+        if (!hasCredentials()) {
+            return@withContext MetadataResult.Error("IGDB credentials not configured. Please set up Twitch API credentials.")
+        }
+
+        try {
+            val token = getAccessToken()
+                ?: return@withContext MetadataResult.Error("Failed to authenticate with IGDB. Check your Client ID and Secret.")
+
+            val searchName = cleanGameName(gameName)
+            Log.d(TAG, "Searching IGDB for PS Vita game: $searchName")
+
+            val fields = """
+                name, summary, rating, first_release_date,
+                genres.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher,
+                cover.url, screenshots.url, videos.video_id, game_modes.name
+            """.trimIndent()
+
+            // Primary: search scoped to PS Vita platform
+            val vitaQuery = """
+                search "$searchName";
+                fields $fields;
+                where platforms = ($PLATFORM_VITA);
+                limit 5;
+            """.trimIndent()
+
+            val vitaResponse = makeIgdbRequest("games", vitaQuery, token)
+            if (vitaResponse != null && vitaResponse.length() > 0) {
+                val result = parseIgdbResponse(vitaResponse, gameName)
+                if (result is MetadataResult.Success) return@withContext result
+            }
+
+            // Fallback: search without platform filter (covers cases where Vita isn't tagged)
+            Log.d(TAG, "No Vita-specific results, trying broader search for: $searchName")
+            val broaderQuery = """
+                search "$searchName";
+                fields $fields;
+                limit 5;
+            """.trimIndent()
+
+            val broaderResponse = makeIgdbRequest("games", broaderQuery, token)
+            if (broaderResponse == null || broaderResponse.length() == 0) {
+                return@withContext MetadataResult.NotFound(gameName)
+            }
+            parseIgdbResponse(broaderResponse, gameName)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error searching IGDB for Vita game: ${e.message}", e)
             MetadataResult.Error("Failed to search IGDB: ${e.message}")
         }
     }

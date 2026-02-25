@@ -523,8 +523,8 @@ private fun NavHostContent(
                 onReScrapeGame = viewModel::reScrapeVitaGame,
                 onClearPendingReScrape = viewModel::clearPendingReScrapeVitaGame,
                 onSavePath = viewModel::saveVitaRomsPath,
-                onSetScreenScraperCredentials = viewModel::setScreenScraperCredentials,
-                currentScreenScraperUsername = viewModel.getScreenScraperUsername(),
+                onSetIgdbCredentials = viewModel::setVitaIgdbCredentials,
+                currentIgdbClientId = viewModel.getVitaIgdbClientId(),
                 getArtworkPath = viewModel::getVitaGameArtworkPath
             )
         }
