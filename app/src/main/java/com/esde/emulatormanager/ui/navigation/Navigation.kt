@@ -144,14 +144,20 @@ fun AppNavigation(
     // State for selected emulator when configuring
     var selectedEmulatorForConfig by remember { mutableStateOf<InstalledEmulator?>(null) }
 
-    // Show navigation only on main screens
+    // Show navigation on main screens and all Games sub-screens
+    val gamesSubRoutes = listOf(
+        Screen.Games.route,
+        Screen.WindowsGames.route,
+        Screen.AndroidGames.route,
+        Screen.VitaGames.route,
+        Screen.AddVitaGame.route
+    )
     val showNavigation = currentDestination?.route in listOf(
         Screen.Home.route,
         Screen.Emulators.route,
-        Screen.Games.route,
         Screen.Profiles.route,
         Screen.About.route
-    )
+    ) + gamesSubRoutes
 
     // Detect landscape mode using configuration
     val configuration = LocalConfiguration.current
@@ -180,7 +186,10 @@ fun AppNavigation(
                     verticalArrangement = Arrangement.Center
                 ) {
                     bottomNavItems.forEach { item ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                        val selected = when (item.screen) {
+                            Screen.Games -> currentDestination?.route in gamesSubRoutes
+                            else -> currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                        }
 
                         NavigationRailItem(
                             icon = {
@@ -231,7 +240,10 @@ fun AppNavigation(
                     NavigationBar {
                         val labelStyle = adaptiveNavLabelStyle()
                         bottomNavItems.forEach { item ->
-                            val selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                            val selected = when (item.screen) {
+                                Screen.Games -> currentDestination?.route in gamesSubRoutes
+                                else -> currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                            }
                             val label = if (labelStyle.useShortTitles) item.shortTitle else item.title
 
                             NavigationBarItem(
@@ -497,6 +509,7 @@ private fun NavHostContent(
                 onSetPendingReScrapeGame = viewModel::setPendingReScrapeVitaGame,
                 onReScrapeGame = viewModel::reScrapeVitaGame,
                 onClearPendingReScrape = viewModel::clearPendingReScrapeVitaGame,
+                onSavePath = viewModel::saveVitaRomsPath,
                 onSetScreenScraperCredentials = viewModel::setScreenScraperCredentials,
                 currentScreenScraperUsername = viewModel.getScreenScraperUsername()
             )

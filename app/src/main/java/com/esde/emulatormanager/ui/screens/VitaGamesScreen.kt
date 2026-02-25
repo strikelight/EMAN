@@ -1,5 +1,10 @@
 package com.esde.emulatormanager.ui.screens
 
+import android.net.Uri
+import android.os.Environment
+import android.provider.DocumentsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,7 +16,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.esde.emulatormanager.data.model.ScrapeOptions
 import com.esde.emulatormanager.data.model.ScrapeProgress
@@ -34,11 +41,44 @@ fun VitaGamesScreen(
     onSetPendingReScrapeGame: (VitaGame?) -> Unit = {},
     onReScrapeGame: (VitaGame, String?) -> Unit = { _, _ -> },
     onClearPendingReScrape: () -> Unit = {},
+    onSavePath: (String) -> Unit = {},
     onSetScreenScraperCredentials: (String, String) -> Unit = { _, _ -> },
     currentScreenScraperUsername: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var showPathDialog by remember { mutableStateOf(false) }
+
+    // Folder picker launcher for ROM path editing
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let {
+            val path = getVitaPathFromUri(context, it)
+            if (path != null) {
+                onSavePath(path)
+            }
+        }
+        showPathDialog = false
+    }
+
+    // Launch folder picker when triggered
+    LaunchedEffect(showPathDialog) {
+        if (showPathDialog) {
+            val initialUri = try {
+                val basePath = uiState.esdeVitaPath
+                    ?: Environment.getExternalStorageDirectory().absolutePath
+                DocumentsContract.buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:${basePath.removePrefix(Environment.getExternalStorageDirectory().absolutePath + "/")}"
+                )
+            } catch (e: Exception) {
+                null
+            }
+            folderPickerLauncher.launch(initialUri)
+        }
+    }
 
     // Show success message
     LaunchedEffect(uiState.successMessage) {
@@ -140,11 +180,12 @@ fun VitaGamesScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // ROM path card
-            uiState.esdeVitaPath?.let { path ->
-                item {
-                    VitaPathCard(path = path)
-                }
+            // ROM path card (always show — uses default path if not yet configured)
+            item {
+                VitaPathCard(
+                    path = uiState.esdeVitaPath ?: "Not configured",
+                    onEditClick = { showPathDialog = true }
+                )
             }
 
             // ScreenScraper credentials card
@@ -194,12 +235,13 @@ fun VitaGamesScreen(
 @Composable
 private fun VitaPathCard(
     path: String,
+    onEditClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         )
     ) {
         Row(
@@ -211,20 +253,29 @@ private fun VitaPathCard(
             Icon(
                 imageVector = Icons.Outlined.Folder,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "ROM Path",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "PS Vita ROMs Path",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = path,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(onClick = onEditClick) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit Path",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -676,4 +727,37 @@ private fun VitaReScrapeDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+}
+
+/**
+ * Convert a content URI from the folder picker to an actual file path.
+ */
+private fun getVitaPathFromUri(context: android.content.Context, uri: Uri): String? {
+    return try {
+        val docId = DocumentsContract.getTreeDocumentId(uri)
+
+        if (docId.startsWith("primary:")) {
+            val relativePath = docId.removePrefix("primary:")
+            "${Environment.getExternalStorageDirectory().absolutePath}/$relativePath"
+        } else if (docId.contains(":")) {
+            val split = docId.split(":")
+            val storageId = split[0]
+            val relativePath = if (split.size > 1) split[1] else ""
+
+            val storagePaths = context.getExternalFilesDirs(null)
+            for (storagePath in storagePaths) {
+                if (storagePath != null) {
+                    val rootPath = storagePath.absolutePath.substringBefore("/Android")
+                    if (rootPath.contains(storageId) || storageId == "primary") {
+                        return "$rootPath/$relativePath"
+                    }
+                }
+            }
+            "${Environment.getExternalStorageDirectory().absolutePath}/$relativePath"
+        } else {
+            "${Environment.getExternalStorageDirectory().absolutePath}/$docId"
+        }
+    } catch (e: Exception) {
+        null
+    }
 }

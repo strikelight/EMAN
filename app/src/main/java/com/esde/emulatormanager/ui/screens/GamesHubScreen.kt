@@ -56,7 +56,7 @@ fun GamesHubScreen(
 
             GamesHubCard(
                 icon = Icons.Filled.Android,
-                title = "Android Games",
+                title = "Android",
                 subtitle = if (androidGamesCount > 0) {
                     "$androidGamesCount app${if (androidGamesCount != 1) "s" else ""} in ES-DE"
                 } else {

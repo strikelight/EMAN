@@ -27,18 +27,47 @@ class VitaGamesService @Inject constructor(
         private const val VITA_EXT = ".psvita"
     }
 
+    // SharedPreferences for persistent custom path storage
+    private val prefs = context.getSharedPreferences("vita_games_prefs", android.content.Context.MODE_PRIVATE)
+    private val PREF_CUSTOM_VITA_PATH = "custom_vita_path"
+
+    /**
+     * User-specified custom path override. When set, this takes precedence over
+     * ES-DE config and fallback paths. Stored in SharedPreferences for persistence.
+     */
+    var customVitaPath: String?
+        get() = prefs.getString(PREF_CUSTOM_VITA_PATH, null)
+        set(value) {
+            prefs.edit().apply {
+                if (value != null) putString(PREF_CUSTOM_VITA_PATH, value)
+                else remove(PREF_CUSTOM_VITA_PATH)
+                apply()
+            }
+        }
+
+    /**
+     * Set a custom Vita ROMs path that overrides automatic detection.
+     * The path is persisted across app restarts.
+     */
+    fun setCustomPath(path: String?) {
+        customVitaPath = path
+    }
+
     /**
      * Get the ES-DE psvita ROM path.
-     * Priority: 1) ES-DE config, 2) Common fallback paths, 3) Default path.
+     * Priority: 0) User custom path, 1) ES-DE config, 2) Common fallback paths, 3) Default path.
      */
     fun getEsdeVitaPath(): String? {
-        // First: try to get the path from ES-DE's configuration
+        // Priority 0: user-specified custom path
+        customVitaPath?.let { return it }
+
+        // Priority 1: try to get the path from ES-DE's configuration
         val configuredPath = esdeConfigService.getSystemRomPath(VITA_FOLDER)
         if (configuredPath != null) {
             return configuredPath
         }
 
-        // Fallback to searching common paths
+        // Priority 2: fallback to searching common paths that actually exist
         val possiblePaths = listOf(
             File(Environment.getExternalStorageDirectory(), "ROMs/$VITA_FOLDER"),
             File(Environment.getExternalStorageDirectory(), "Roms/$VITA_FOLDER"),
@@ -52,7 +81,7 @@ class VitaGamesService @Inject constructor(
             }
         }
 
-        // Return default path even if it doesn't exist yet
+        // Priority 3: return default path even if it doesn't exist yet
         return File(Environment.getExternalStorageDirectory(), "ROMs/$VITA_FOLDER").absolutePath
     }
 

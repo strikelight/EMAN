@@ -1586,6 +1586,16 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun saveVitaRomsPath(path: String) {
+        vitaGamesService.setCustomPath(path)
+        _vitaGamesState.update {
+            it.copy(
+                esdeVitaPath = path,
+                successMessage = "PS Vita ROM path updated"
+            )
+        }
+    }
+
     fun addVitaGameToEsde(titleId: String, displayName: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
