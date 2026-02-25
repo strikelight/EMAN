@@ -10,6 +10,7 @@ import com.esde.emulatormanager.data.service.GogApiService
 import com.esde.emulatormanager.data.service.MetadataService
 import com.esde.emulatormanager.data.service.ProfileService
 import com.esde.emulatormanager.data.service.SteamApiService
+import com.esde.emulatormanager.data.service.VitaGamesService
 import com.esde.emulatormanager.data.service.WindowsGamesService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +31,8 @@ class MainViewModel @Inject constructor(
     private val androidGamesService: AndroidGamesService,
     private val profileService: ProfileService,
     private val deviceIdentificationService: DeviceIdentificationService,
-    private val metadataService: MetadataService
+    private val metadataService: MetadataService,
+    private val vitaGamesService: VitaGamesService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -53,6 +55,9 @@ class MainViewModel @Inject constructor(
 
     private val _profilesState = MutableStateFlow(ProfilesUiState())
     val profilesState: StateFlow<ProfilesUiState> = _profilesState.asStateFlow()
+
+    private val _vitaGamesState = MutableStateFlow(VitaGamesUiState())
+    val vitaGamesState: StateFlow<VitaGamesUiState> = _vitaGamesState.asStateFlow()
 
     init {
         checkEsdeConfiguration()
@@ -1536,6 +1541,290 @@ class MainViewModel @Inject constructor(
     fun clearIgdbCredentials() {
         metadataService.clearIgdbCredentials()
         _androidGamesState.update { it.copy(hasIgdbCredentials = false) }
+    }
+
+    // ========== PS Vita Games Functions ==========
+
+    fun loadVitaGames() {
+        viewModelScope.launch {
+            _vitaGamesState.update { it.copy(isLoading = true) }
+
+            withContext(Dispatchers.IO) {
+                val vitaPath = vitaGamesService.getEsdeVitaPath()
+                val games = vitaGamesService.scanVitaGames()
+                val count = metadataService.getVitaGamesWithoutMetadataCount()
+                val hasCredentials = metadataService.hasScreenScraperCredentials()
+
+                _vitaGamesState.update {
+                    it.copy(
+                        isLoading = false,
+                        games = games,
+                        esdeVitaPath = vitaPath,
+                        gamesWithoutMetadataCount = count,
+                        hasScreenScraperCredentials = hasCredentials
+                    )
+                }
+            }
+        }
+    }
+
+    fun scanVitaGames() {
+        viewModelScope.launch {
+            _vitaGamesState.update { it.copy(isLoading = true) }
+
+            withContext(Dispatchers.IO) {
+                val games = vitaGamesService.scanVitaGames()
+
+                _vitaGamesState.update {
+                    it.copy(
+                        isLoading = false,
+                        games = games,
+                        successMessage = "Found ${games.size} PS Vita game${if (games.size != 1) "s" else ""}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun addVitaGameToEsde(titleId: String, displayName: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val vitaPath = vitaGamesService.getEsdeVitaPath()
+                    ?: run {
+                        _vitaGamesState.update { it.copy(error = "Could not determine psvita ROM path") }
+                        return@withContext
+                    }
+
+                when (val result = vitaGamesService.createVitaShortcut(titleId, displayName, vitaPath)) {
+                    is ConfigResult.Success -> {
+                        val game = result.data
+
+                        // Auto-scrape if we have ScreenScraper credentials
+                        var metadataScraped = false
+                        if (metadataService.hasScreenScraperCredentials()) {
+                            try {
+                                metadataScraped = metadataService.scrapeAndSaveVitaMetadata(
+                                    game,
+                                    _vitaGamesState.value.scrapeOptions
+                                )
+                            } catch (e: Exception) {
+                                android.util.Log.e("MainViewModel", "Vita metadata scrape exception: ${e.message}", e)
+                            }
+                        }
+
+                        val message = if (metadataScraped) {
+                            "Added ${game.displayName} with metadata"
+                        } else {
+                            "Added ${game.displayName}"
+                        }
+
+                        val games = vitaGamesService.scanVitaGames()
+                        _vitaGamesState.update {
+                            it.copy(
+                                games = games,
+                                successMessage = message,
+                                gamesWithoutMetadataCount = metadataService.getVitaGamesWithoutMetadataCount()
+                            )
+                        }
+                    }
+                    is ConfigResult.Error -> {
+                        _vitaGamesState.update { it.copy(error = result.message) }
+                    }
+                }
+            }
+        }
+    }
+
+    fun removeVitaGameFromEsde(game: VitaGame) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                when (val result = vitaGamesService.removeVitaGame(game)) {
+                    is ConfigResult.Success -> {
+                        // Remove gamelist entry
+                        val gameFileName = java.io.File(game.filePath).nameWithoutExtension
+                        metadataService.removeVitaGameMetadata("./$gameFileName.psvita")
+
+                        val games = vitaGamesService.scanVitaGames()
+                        _vitaGamesState.update {
+                            it.copy(
+                                games = games,
+                                successMessage = "Removed ${game.displayName}",
+                                gamesWithoutMetadataCount = metadataService.getVitaGamesWithoutMetadataCount()
+                            )
+                        }
+                    }
+                    is ConfigResult.Error -> {
+                        _vitaGamesState.update { it.copy(error = result.message) }
+                    }
+                }
+            }
+        }
+    }
+
+    fun updateVitaSearchQuery(query: String) {
+        _vitaGamesState.update { it.copy(searchQuery = query) }
+    }
+
+    fun searchVitaGames(query: String) {
+        if (query.length < 2) return
+        viewModelScope.launch {
+            _vitaGamesState.update { it.copy(isSearching = true, error = null) }
+
+            withContext(Dispatchers.IO) {
+                val results = try {
+                    metadataService.searchVitaGame(query)
+                } catch (e: Exception) {
+                    android.util.Log.e("MainViewModel", "ScreenScraper search error: ${e.message}", e)
+                    _vitaGamesState.update {
+                        it.copy(isSearching = false, error = "Search failed: ${e.message}")
+                    }
+                    return@withContext
+                }
+
+                _vitaGamesState.update {
+                    it.copy(isSearching = false, searchResults = results)
+                }
+            }
+        }
+    }
+
+    fun clearVitaSearchResults() {
+        _vitaGamesState.update {
+            it.copy(searchQuery = "", searchResults = emptyList(), isSearching = false)
+        }
+    }
+
+    fun updateVitaMetadataCount() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val count = metadataService.getVitaGamesWithoutMetadataCount()
+                val hasCredentials = metadataService.hasScreenScraperCredentials()
+                _vitaGamesState.update {
+                    it.copy(
+                        gamesWithoutMetadataCount = count,
+                        hasScreenScraperCredentials = hasCredentials
+                    )
+                }
+            }
+        }
+    }
+
+    fun scrapeVitaMetadata() {
+        viewModelScope.launch {
+            val options = _vitaGamesState.value.scrapeOptions
+            _vitaGamesState.update { it.copy(isScraping = true, scrapeProgress = null) }
+
+            withContext(Dispatchers.IO) {
+                val successCount = metadataService.scrapeAllMissingVitaMetadata(options) { progress ->
+                    _vitaGamesState.update { it.copy(scrapeProgress = progress) }
+                }
+
+                metadataService.resetScrapeProgress()
+
+                val games = vitaGamesService.scanVitaGames()
+                _vitaGamesState.update {
+                    it.copy(
+                        isScraping = false,
+                        scrapeProgress = null,
+                        games = games,
+                        gamesWithoutMetadataCount = metadataService.getVitaGamesWithoutMetadataCount(),
+                        successMessage = if (successCount > 0) {
+                            "Scraped metadata for $successCount game${if (successCount != 1) "s" else ""}"
+                        } else {
+                            "No games needed metadata"
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    fun reScrapeVitaGame(game: VitaGame, searchTerm: String? = null) {
+        viewModelScope.launch {
+            val options = _vitaGamesState.value.scrapeOptions
+            _vitaGamesState.update { it.copy(isScraping = true, pendingReScrapeGame = null) }
+
+            withContext(Dispatchers.IO) {
+                // Use search term override if provided, otherwise use display name
+                val gameToScrape = if (searchTerm != null) {
+                    game.copy(displayName = searchTerm)
+                } else {
+                    game
+                }
+
+                val success = try {
+                    metadataService.scrapeAndSaveVitaMetadata(gameToScrape, options)
+                } catch (e: Exception) {
+                    android.util.Log.e("MainViewModel", "Vita re-scrape error: ${e.message}", e)
+                    false
+                }
+
+                val games = vitaGamesService.scanVitaGames()
+                _vitaGamesState.update {
+                    it.copy(
+                        isScraping = false,
+                        games = games,
+                        gamesWithoutMetadataCount = metadataService.getVitaGamesWithoutMetadataCount(),
+                        successMessage = if (success) {
+                            "Re-scraped metadata for ${game.displayName}"
+                        } else {
+                            "No metadata found for ${game.displayName}"
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    fun setPendingReScrapeVitaGame(game: VitaGame?) {
+        _vitaGamesState.update { it.copy(pendingReScrapeGame = game) }
+    }
+
+    fun clearPendingReScrapeVitaGame() {
+        _vitaGamesState.update { it.copy(pendingReScrapeGame = null) }
+    }
+
+    fun clearVitaSuccess() {
+        _vitaGamesState.update { it.copy(successMessage = null) }
+    }
+
+    fun clearVitaError() {
+        _vitaGamesState.update { it.copy(error = null) }
+    }
+
+    fun showVitaScrapeOptionsDialog() {
+        _vitaGamesState.update { it.copy(showScrapeOptionsDialog = true) }
+    }
+
+    fun dismissVitaScrapeOptionsDialog() {
+        _vitaGamesState.update { it.copy(showScrapeOptionsDialog = false) }
+    }
+
+    fun updateVitaScrapeOptions(options: ScrapeOptions) {
+        _vitaGamesState.update { it.copy(scrapeOptions = options, showScrapeOptionsDialog = false) }
+    }
+
+    fun setScreenScraperCredentials(username: String, password: String) {
+        metadataService.setScreenScraperCredentials(username, password)
+        _vitaGamesState.update { it.copy(hasScreenScraperCredentials = true) }
+    }
+
+    fun getScreenScraperUsername(): String? = metadataService.getScreenScraperUsername()
+
+    // ========== Games Hub Counts ==========
+
+    fun getWindowsGamesInEsdeCount(): Int {
+        return _windowsGamesState.value.launchers.sumOf { launcher ->
+            launcher.games.count { it.isInEsde }
+        }
+    }
+
+    fun getAndroidGamesInEsdeCount(): Int {
+        return _androidGamesState.value.allApps.count { it.isInEsde }
+    }
+
+    fun getVitaGamesInEsdeCount(): Int {
+        return _vitaGamesState.value.games.size
     }
 
     /**

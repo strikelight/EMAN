@@ -11,6 +11,7 @@ import com.esde.emulatormanager.data.model.PendingMetadataSearch
 import com.esde.emulatormanager.data.model.ScrapeOptions
 import com.esde.emulatormanager.data.model.ScrapeProgress
 import com.esde.emulatormanager.data.model.SteamGame
+import com.esde.emulatormanager.data.model.VitaGame
 import com.esde.emulatormanager.data.model.WindowsGamePlatform
 import com.esde.emulatormanager.data.model.WindowsGameShortcut
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +34,9 @@ class MetadataService @Inject constructor(
     private val gamelistService: GamelistService,
     private val esdeConfigService: EsdeConfigService,
     private val windowsGamesService: WindowsGamesService,
-    private val androidGamesService: AndroidGamesService
+    private val androidGamesService: AndroidGamesService,
+    private val screenScraperService: ScreenScraperService,
+    private val vitaGamesService: VitaGamesService
 ) {
     companion object {
         private const val TAG = "MetadataService"
@@ -1141,5 +1144,211 @@ class MetadataService @Inject constructor(
         Log.d(TAG, "getAndroidGamesWithoutMetadataCount: missingMetadata=$missingMetadata (count=${missingMetadata.size})")
 
         return missingMetadata.size
+    }
+
+    // ==================== ScreenScraper / PS Vita ====================
+
+    /**
+     * Check if ScreenScraper credentials are configured.
+     */
+    fun hasScreenScraperCredentials(): Boolean = screenScraperService.hasCredentials()
+
+    /**
+     * Set ScreenScraper credentials.
+     */
+    fun setScreenScraperCredentials(username: String, password: String) {
+        screenScraperService.setCredentials(username, password)
+    }
+
+    /**
+     * Get current ScreenScraper username (for display).
+     */
+    fun getScreenScraperUsername(): String? = screenScraperService.getUsername()
+
+    /**
+     * Clear ScreenScraper credentials.
+     */
+    fun clearScreenScraperCredentials() = screenScraperService.clearCredentials()
+
+    /**
+     * Search ScreenScraper for a PS Vita game by name.
+     */
+    suspend fun searchVitaGame(name: String) = screenScraperService.searchVitaGame(name)
+
+    /**
+     * Scrape and save metadata for a single PS Vita game.
+     * @param game The VitaGame to scrape
+     * @param options Scrape options controlling which media types to download
+     * @return True if metadata was successfully scraped and saved
+     */
+    suspend fun scrapeAndSaveVitaMetadata(
+        game: VitaGame,
+        options: ScrapeOptions = ScrapeOptions()
+    ): Boolean = withContext(Dispatchers.IO) {
+        val details = screenScraperService.getVitaGameDetailsByName(game.displayName)
+            ?: run {
+                Log.w(TAG, "No ScreenScraper results for Vita game: ${game.displayName}")
+                return@withContext false
+            }
+
+        val gameFileName = File(game.filePath).nameWithoutExtension
+        val gamePath = "./$gameFileName.psvita"
+
+        var metadata = GameMetadata(
+            path = gamePath,
+            name = details.name.ifBlank { game.displayName },
+            desc = if (options.scrapeMetadata) details.desc else null,
+            rating = if (options.scrapeMetadata) details.rating else null,
+            releasedate = if (options.scrapeMetadata) details.releaseDate else null,
+            developer = if (options.scrapeMetadata) details.developer else null,
+            publisher = if (options.scrapeMetadata) details.publisher else null,
+            genre = if (options.scrapeMetadata) details.genre else null
+        )
+
+        if (options.scrapeArtwork) {
+            // Download cover
+            details.coverUrl?.let { url ->
+                val coversDir = esdeConfigService.getMediaDirectory("psvita", "covers")
+                if (coversDir != null) {
+                    val destFile = File(coversDir, "$gameFileName.jpg")
+                    if (screenScraperService.downloadMedia(url, destFile)) {
+                        metadata = metadata.copy(image = "./media/covers/$gameFileName.jpg")
+                        Log.d(TAG, "Downloaded cover for Vita game: $gameFileName")
+                    }
+                }
+            }
+
+            // Download screenshot
+            details.screenshotUrl?.let { url ->
+                val screenshotsDir = esdeConfigService.getMediaDirectory("psvita", "screenshots")
+                if (screenshotsDir != null) {
+                    val destFile = File(screenshotsDir, "$gameFileName.jpg")
+                    if (screenScraperService.downloadMedia(url, destFile)) {
+                        metadata = metadata.copy(titlescreen = "./media/screenshots/$gameFileName.jpg")
+                        Log.d(TAG, "Downloaded screenshot for Vita game: $gameFileName")
+                    }
+                }
+            }
+
+            // Generate miximage if we have artwork
+            val coversDir = esdeConfigService.getMediaDirectory("psvita", "covers")
+            val screenshotsDir = esdeConfigService.getMediaDirectory("psvita", "screenshots")
+            val miximagesDir = esdeConfigService.getMediaDirectory("psvita", "miximages")
+            if (coversDir != null && screenshotsDir != null && miximagesDir != null) {
+                val miximagePath = steamApiService.generateMiximage(coversDir, screenshotsDir, miximagesDir, gameFileName)
+                if (miximagePath != null) {
+                    Log.d(TAG, "Generated miximage for Vita game: $gameFileName")
+                }
+            }
+        }
+
+        if (options.scrapeVideos) {
+            details.videoUrl?.let { url ->
+                val videosDir = esdeConfigService.getMediaDirectory("psvita", "videos")
+                if (videosDir != null) {
+                    val destFile = File(videosDir, "$gameFileName.mp4")
+                    if (screenScraperService.downloadMedia(url, destFile)) {
+                        metadata = metadata.copy(video = "./media/videos/$gameFileName.mp4")
+                        Log.d(TAG, "Downloaded video for Vita game: $gameFileName")
+                    }
+                }
+            }
+        }
+
+        gamelistService.writeGameMetadata("psvita", metadata)
+        Log.d(TAG, "Saved ScreenScraper metadata for Vita game: ${metadata.name}")
+        true
+    }
+
+    /**
+     * Scrape metadata for all PS Vita games that don't have it.
+     * @param onProgress Callback for progress updates
+     * @return Number of games successfully scraped
+     */
+    suspend fun scrapeAllMissingVitaMetadata(
+        options: ScrapeOptions = ScrapeOptions(),
+        onProgress: ((ScrapeProgress) -> Unit)? = null
+    ): Int = withContext(Dispatchers.IO) {
+        val vitaPath = vitaGamesService.getEsdeVitaPath()
+        if (vitaPath == null) {
+            Log.e(TAG, "Could not get psvita path")
+            return@withContext 0
+        }
+
+        val vitaDir = File(vitaPath)
+        val allFiles = vitaDir.listFiles { f ->
+            f.isFile && f.extension == "psvita"
+        }?.filter { file ->
+            !gamelistService.hasMetadata("psvita", "./${file.name}")
+        } ?: return@withContext 0
+
+        var successCount = 0
+        val total = allFiles.size
+
+        allFiles.forEachIndexed { index, file ->
+            val progress = ScrapeProgress(
+                total = total,
+                completed = index,
+                successful = successCount,
+                failed = index - successCount,
+                currentGame = file.nameWithoutExtension
+            )
+            _scrapeProgress.value = progress
+            onProgress?.invoke(progress)
+
+            try {
+                val titleId = file.readText().trim()
+                val displayName = file.nameWithoutExtension
+                    .replace("_", " ")
+                    .split(" ")
+                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+
+                val game = VitaGame(
+                    titleId = titleId,
+                    displayName = displayName,
+                    filePath = file.absolutePath
+                )
+                val scraped = scrapeAndSaveVitaMetadata(game, options)
+                if (scraped) successCount++
+            } catch (e: Exception) {
+                Log.e(TAG, "Error scraping metadata for ${file.name}", e)
+            }
+
+            // Small delay to avoid ScreenScraper rate limiting
+            kotlinx.coroutines.delay(1000)
+        }
+
+        val finalProgress = ScrapeProgress(
+            total = total,
+            completed = total,
+            successful = successCount,
+            failed = total - successCount
+        )
+        _scrapeProgress.value = finalProgress
+        onProgress?.invoke(finalProgress)
+
+        successCount
+    }
+
+    /**
+     * Get count of PS Vita games without metadata.
+     */
+    fun getVitaGamesWithoutMetadataCount(): Int {
+        val vitaPath = vitaGamesService.getEsdeVitaPath() ?: return 0
+        val vitaDir = File(vitaPath)
+        if (!vitaDir.exists()) return 0
+
+        val allFiles = vitaDir.listFiles { f ->
+            f.isFile && f.extension == "psvita"
+        }?.map { it.name } ?: return 0
+
+        return gamelistService.getGamesWithoutMetadata("psvita", allFiles).size
+    }
+
+    /**
+     * Remove gamelist metadata for a PS Vita game by its path (e.g. "./GameName.psvita").
+     */
+    fun removeVitaGameMetadata(path: String) {
+        gamelistService.removeGameMetadata("psvita", path)
     }
 }

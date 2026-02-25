@@ -312,3 +312,44 @@ data class AndroidGamesUiState(
     val pendingReScrapeGame: AndroidGame? = null
 )
 
+/**
+ * Represents a PS Vita game shortcut for ES-DE.
+ * The .psvita file contains the game's Title ID as plain text (e.g., "PCSG00123").
+ */
+data class VitaGame(
+    val titleId: String,         // e.g. "PCSG00123" — content of .psvita file
+    val displayName: String,     // From filename or scraped name
+    val filePath: String,        // Full path to .psvita file
+    val hasMetadata: Boolean = false
+)
+
+/**
+ * UI state for PS Vita games management
+ */
+data class VitaGamesUiState(
+    val isLoading: Boolean = true,
+    val games: List<VitaGame> = emptyList(),
+    val esdeVitaPath: String? = null,
+    val error: String? = null,
+    val successMessage: String? = null,
+    val isScraping: Boolean = false,
+    val scrapeProgress: ScrapeProgress? = null,
+    val gamesWithoutMetadataCount: Int = 0,
+    val hasScreenScraperCredentials: Boolean = false,
+    val pendingReScrapeGame: VitaGame? = null,
+    val searchQuery: String = "",
+    val isSearching: Boolean = false,
+    val searchResults: List<VitaSearchResult> = emptyList(),
+    val scrapeOptions: ScrapeOptions = ScrapeOptions(),
+    val showScrapeOptionsDialog: Boolean = false
+)
+
+/**
+ * Represents a PS Vita game search result from ScreenScraper
+ */
+data class VitaSearchResult(
+    val ssId: String,            // ScreenScraper game ID
+    val name: String,            // Display name
+    val year: String? = null,
+    val coverUrl: String? = null // Small thumbnail URL for display
+)

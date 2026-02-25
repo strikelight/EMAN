@@ -14,7 +14,9 @@ import com.esde.emulatormanager.data.service.GogApiService
 import com.esde.emulatormanager.data.service.IgdbService
 import com.esde.emulatormanager.data.service.MetadataService
 import com.esde.emulatormanager.data.service.ProfileService
+import com.esde.emulatormanager.data.service.ScreenScraperService
 import com.esde.emulatormanager.data.service.SteamApiService
+import com.esde.emulatormanager.data.service.VitaGamesService
 import com.esde.emulatormanager.data.service.WindowsGamesService
 import dagger.Module
 import dagger.Provides
@@ -143,6 +145,24 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideScreenScraperService(
+        @ApplicationContext context: Context
+    ): ScreenScraperService {
+        return ScreenScraperService(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideVitaGamesService(
+        @ApplicationContext context: Context,
+        esdeConfigService: EsdeConfigService,
+        gamelistService: GamelistService
+    ): VitaGamesService {
+        return VitaGamesService(context, esdeConfigService, gamelistService)
+    }
+
+    @Provides
+    @Singleton
     fun provideMetadataService(
         steamApiService: SteamApiService,
         gogApiService: GogApiService,
@@ -150,7 +170,9 @@ object AppModule {
         gamelistService: GamelistService,
         esdeConfigService: EsdeConfigService,
         windowsGamesService: WindowsGamesService,
-        androidGamesService: AndroidGamesService
+        androidGamesService: AndroidGamesService,
+        screenScraperService: ScreenScraperService,
+        vitaGamesService: VitaGamesService
     ): MetadataService {
         return MetadataService(
             steamApiService,
@@ -159,7 +181,9 @@ object AppModule {
             gamelistService,
             esdeConfigService,
             windowsGamesService,
-            androidGamesService
+            androidGamesService,
+            screenScraperService,
+            vitaGamesService
         )
     }
 }

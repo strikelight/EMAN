@@ -30,6 +30,7 @@ import com.esde.emulatormanager.data.model.CustomEmulatorMapping
 import com.esde.emulatormanager.data.model.InstalledEmulator
 import com.esde.emulatormanager.data.model.MainUiState
 import com.esde.emulatormanager.data.model.ProfilesUiState
+import com.esde.emulatormanager.data.model.VitaGamesUiState
 import com.esde.emulatormanager.data.model.WindowsGamesUiState
 import com.esde.emulatormanager.ui.screens.*
 import com.esde.emulatormanager.ui.viewmodel.MainViewModel
@@ -37,8 +38,11 @@ import com.esde.emulatormanager.ui.viewmodel.MainViewModel
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object Emulators : Screen("emulators")
+    data object Games : Screen("games")
     data object WindowsGames : Screen("windows_games")
     data object AndroidGames : Screen("android_games")
+    data object VitaGames : Screen("vita_games")
+    data object AddVitaGame : Screen("add_vita_game")
     data object Profiles : Screen("profiles")
     data object AddSteamGame : Screen("add_steam_game")
     data object AddGogGame : Screen("add_gog_game")
@@ -75,18 +79,11 @@ val bottomNavItems = listOf(
         unselectedIcon = Icons.Outlined.Apps
     ),
     BottomNavItem(
-        screen = Screen.WindowsGames,
-        title = "Windows",
-        shortTitle = "PC",
-        selectedIcon = Icons.Filled.DesktopWindows,
-        unselectedIcon = Icons.Outlined.DesktopWindows
-    ),
-    BottomNavItem(
-        screen = Screen.AndroidGames,
-        title = "Android",
-        shortTitle = "Android",
-        selectedIcon = Icons.Filled.Android,
-        unselectedIcon = Icons.Outlined.Android
+        screen = Screen.Games,
+        title = "Games",
+        shortTitle = "Games",
+        selectedIcon = Icons.Filled.VideogameAsset,
+        unselectedIcon = Icons.Outlined.VideogameAsset
     ),
     BottomNavItem(
         screen = Screen.Profiles,
@@ -140,6 +137,7 @@ fun AppNavigation(
     val windowsGamesState by viewModel.windowsGamesState.collectAsState()
     val androidGamesState by viewModel.androidGamesState.collectAsState()
     val profilesState by viewModel.profilesState.collectAsState()
+    val vitaGamesState by viewModel.vitaGamesState.collectAsState()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
@@ -150,8 +148,7 @@ fun AppNavigation(
     val showNavigation = currentDestination?.route in listOf(
         Screen.Home.route,
         Screen.Emulators.route,
-        Screen.WindowsGames.route,
-        Screen.AndroidGames.route,
+        Screen.Games.route,
         Screen.Profiles.route,
         Screen.About.route
     )
@@ -219,6 +216,7 @@ fun AppNavigation(
                     windowsGamesState = windowsGamesState,
                     androidGamesState = androidGamesState,
                     profilesState = profilesState,
+                    vitaGamesState = vitaGamesState,
                     selectedEmulatorForConfig = selectedEmulatorForConfig,
                     onSelectedEmulatorChange = { selectedEmulatorForConfig = it },
                     modifier = Modifier.fillMaxSize()
@@ -270,6 +268,7 @@ fun AppNavigation(
                 windowsGamesState = windowsGamesState,
                 androidGamesState = androidGamesState,
                 profilesState = profilesState,
+                vitaGamesState = vitaGamesState,
                 selectedEmulatorForConfig = selectedEmulatorForConfig,
                 onSelectedEmulatorChange = { selectedEmulatorForConfig = it },
                 modifier = Modifier.padding(paddingValues)
@@ -289,6 +288,7 @@ private fun NavHostContent(
     windowsGamesState: WindowsGamesUiState,
     androidGamesState: AndroidGamesUiState,
     profilesState: ProfilesUiState,
+    vitaGamesState: VitaGamesUiState,
     selectedEmulatorForConfig: InstalledEmulator?,
     onSelectedEmulatorChange: (InstalledEmulator?) -> Unit,
     modifier: Modifier = Modifier
@@ -450,6 +450,77 @@ private fun NavHostContent(
 
         composable(Screen.About.route) {
             AboutScreen()
+        }
+
+        composable(Screen.Games.route) {
+            GamesHubScreen(
+                androidGamesCount = viewModel.getAndroidGamesInEsdeCount(),
+                windowsGamesCount = viewModel.getWindowsGamesInEsdeCount(),
+                vitaGamesCount = viewModel.getVitaGamesInEsdeCount(),
+                onNavigateToAndroid = {
+                    viewModel.loadAndroidGames()
+                    viewModel.updateAndroidMetadataCount()
+                    navController.navigate(Screen.AndroidGames.route)
+                },
+                onNavigateToWindows = {
+                    viewModel.loadWindowsGames()
+                    viewModel.checkAllLauncherConfigurations()
+                    viewModel.updateWindowsMetadataCount()
+                    navController.navigate(Screen.WindowsGames.route)
+                },
+                onNavigateToVita = {
+                    navController.navigate(Screen.VitaGames.route)
+                }
+            )
+        }
+
+        composable(Screen.VitaGames.route) {
+            LaunchedEffect(Unit) {
+                viewModel.loadVitaGames()
+                viewModel.updateVitaMetadataCount()
+            }
+
+            VitaGamesScreen(
+                uiState = vitaGamesState,
+                onScanGames = viewModel::scanVitaGames,
+                onRemoveGame = viewModel::removeVitaGameFromEsde,
+                onAddGame = {
+                    viewModel.clearVitaSearchResults()
+                    navController.navigate(Screen.AddVitaGame.route)
+                },
+                onDismissSuccess = viewModel::clearVitaSuccess,
+                onDismissError = viewModel::clearVitaError,
+                onScrapeMetadata = viewModel::scrapeVitaMetadata,
+                onShowScrapeSettings = viewModel::showVitaScrapeOptionsDialog,
+                onDismissScrapeSettings = viewModel::dismissVitaScrapeOptionsDialog,
+                onUpdateScrapeOptions = viewModel::updateVitaScrapeOptions,
+                onSetPendingReScrapeGame = viewModel::setPendingReScrapeVitaGame,
+                onReScrapeGame = viewModel::reScrapeVitaGame,
+                onClearPendingReScrape = viewModel::clearPendingReScrapeVitaGame,
+                onSetScreenScraperCredentials = viewModel::setScreenScraperCredentials,
+                currentScreenScraperUsername = viewModel.getScreenScraperUsername()
+            )
+        }
+
+        composable(Screen.AddVitaGame.route) {
+            AddVitaGameScreen(
+                searchQuery = vitaGamesState.searchQuery,
+                isSearching = vitaGamesState.isSearching,
+                searchResults = vitaGamesState.searchResults,
+                errorMessage = vitaGamesState.error,
+                successMessage = vitaGamesState.successMessage,
+                onSearchQueryChange = viewModel::updateVitaSearchQuery,
+                onSearch = viewModel::searchVitaGames,
+                onAddGame = { titleId, displayName ->
+                    viewModel.addVitaGameToEsde(titleId, displayName)
+                },
+                onDismissError = viewModel::clearVitaError,
+                onDismissSuccess = viewModel::clearVitaSuccess,
+                onBack = {
+                    viewModel.clearVitaSearchResults()
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable(Screen.AddSteamGame.route) {
