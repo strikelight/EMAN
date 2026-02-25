@@ -335,6 +335,7 @@ data class VitaGamesUiState(
     val isScraping: Boolean = false,
     val scrapeProgress: ScrapeProgress? = null,
     val gamesWithoutMetadataCount: Int = 0,
+    val hasScreenScraperDevCredentials: Boolean = false,
     val hasScreenScraperCredentials: Boolean = false,
     val pendingReScrapeGame: VitaGame? = null,
     val searchQuery: String = "",

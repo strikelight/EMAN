@@ -1554,6 +1554,7 @@ class MainViewModel @Inject constructor(
                 val vitaPath = vitaGamesService.getEsdeVitaPath()
                 val games = vitaGamesService.scanVitaGames()
                 val count = metadataService.getVitaGamesWithoutMetadataCount()
+                val hasDevCredentials = metadataService.hasScreenScraperDevCredentials()
                 val hasCredentials = metadataService.hasScreenScraperCredentials()
 
                 _vitaGamesState.update {
@@ -1562,6 +1563,7 @@ class MainViewModel @Inject constructor(
                         games = games,
                         esdeVitaPath = vitaPath,
                         gamesWithoutMetadataCount = count,
+                        hasScreenScraperDevCredentials = hasDevCredentials,
                         hasScreenScraperCredentials = hasCredentials
                     )
                 }
@@ -1719,10 +1721,12 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val count = metadataService.getVitaGamesWithoutMetadataCount()
+                val hasDevCredentials = metadataService.hasScreenScraperDevCredentials()
                 val hasCredentials = metadataService.hasScreenScraperCredentials()
                 _vitaGamesState.update {
                     it.copy(
                         gamesWithoutMetadataCount = count,
+                        hasScreenScraperDevCredentials = hasDevCredentials,
                         hasScreenScraperCredentials = hasCredentials
                     )
                 }
@@ -1827,6 +1831,13 @@ class MainViewModel @Inject constructor(
     fun updateVitaScrapeOptions(options: ScrapeOptions) {
         _vitaGamesState.update { it.copy(scrapeOptions = options, showScrapeOptionsDialog = false) }
     }
+
+    fun setScreenScraperDevCredentials(devId: String, devPass: String) {
+        metadataService.setScreenScraperDevCredentials(devId, devPass)
+        _vitaGamesState.update { it.copy(hasScreenScraperDevCredentials = true) }
+    }
+
+    fun getScreenScraperDevId(): String? = metadataService.getScreenScraperDevId()
 
     fun setScreenScraperCredentials(username: String, password: String) {
         metadataService.setScreenScraperCredentials(username, password)

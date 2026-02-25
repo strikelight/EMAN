@@ -48,6 +48,8 @@ fun VitaGamesScreen(
     onReScrapeGame: (VitaGame, String?) -> Unit = { _, _ -> },
     onClearPendingReScrape: () -> Unit = {},
     onSavePath: (String) -> Unit = {},
+    onSetScreenScraperDevCredentials: (String, String) -> Unit = { _, _ -> },
+    currentScreenScraperDevId: String? = null,
     onSetScreenScraperCredentials: (String, String) -> Unit = { _, _ -> },
     currentScreenScraperUsername: String? = null,
     getArtworkPath: (String) -> String? = { null },
@@ -198,6 +200,8 @@ fun VitaGamesScreen(
             // ScreenScraper credentials card
             item {
                 ScreenScraperCredentialsCard(
+                    currentDevId = currentScreenScraperDevId,
+                    onSetDevCredentials = onSetScreenScraperDevCredentials,
                     currentUsername = currentScreenScraperUsername,
                     onSetCredentials = onSetScreenScraperCredentials
                 )
@@ -293,22 +297,58 @@ private fun VitaPathCard(
 
 @Composable
 private fun ScreenScraperCredentialsCard(
+    currentDevId: String?,
+    onSetDevCredentials: (String, String) -> Unit,
     currentUsername: String?,
     onSetCredentials: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var username by remember { mutableStateOf("") }
+    var devId by remember { mutableStateOf(currentDevId ?: "") }
+    var devPass by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf(currentUsername ?: "") }
     var password by remember { mutableStateOf("") }
 
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("ScreenScraper Account (Optional)") },
+            title = { Text("ScreenScraper Credentials") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // ---- Developer credentials section ----
                     Text(
-                        text = "Adding your ScreenScraper account removes anonymous rate limits (approx. 20 requests/day). Leave blank to use anonymous access.",
+                        text = "Developer ID (Required)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Register your app at screenscraper.fr → API to receive a devid and devpassword. This is required for all API calls.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = devId,
+                        onValueChange = { devId = it },
+                        label = { Text("Developer ID (devid)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = devPass,
+                        onValueChange = { devPass = it },
+                        label = { Text("Developer Password") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // ---- User account section ----
+                    Text(
+                        text = "User Account (Optional)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Your personal screenscraper.fr login. Increases your daily scrape limit.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -331,9 +371,8 @@ private fun ScreenScraperCredentialsCard(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (username.isNotBlank()) {
-                            onSetCredentials(username.trim(), password.trim())
-                        }
+                        if (devId.isNotBlank()) onSetDevCredentials(devId.trim(), devPass.trim())
+                        if (username.isNotBlank()) onSetCredentials(username.trim(), password.trim())
                         showDialog = false
                     }
                 ) {
@@ -363,7 +402,7 @@ private fun ScreenScraperCredentialsCard(
             Icon(
                 imageVector = Icons.Outlined.AccountCircle,
                 contentDescription = null,
-                tint = if (currentUsername != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (currentDevId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -372,24 +411,30 @@ private fun ScreenScraperCredentialsCard(
                     text = "ScreenScraper",
                     style = MaterialTheme.typography.titleSmall
                 )
-                Text(
-                    text = if (currentUsername != null) {
-                        "Logged in as $currentUsername"
-                    } else {
-                        "Anonymous (limited to ~20 requests/day)"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (currentDevId != null) {
+                    Text(
+                        text = "Dev ID: $currentDevId" + if (currentUsername != null) " · User: $currentUsername" else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        text = "Developer ID required — tap Configure",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
             TextButton(
                 onClick = {
+                    devId = currentDevId ?: ""
+                    devPass = ""
                     username = currentUsername ?: ""
                     password = ""
                     showDialog = true
                 }
             ) {
-                Text(if (currentUsername != null) "Change" else "Login")
+                Text(if (currentDevId != null) "Change" else "Configure")
             }
         }
     }
