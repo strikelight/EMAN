@@ -98,6 +98,8 @@ class ScreenScraperService @Inject constructor(
                 results.add(VitaSearchResult(ssId = ssId.toString(), name = gameName, year = year))
             }
             results
+        } catch (e: ScreenScraperApiException) {
+            throw e  // Let API errors propagate so callers can surface the message
         } catch (e: Exception) {
             Log.e(TAG, "Error searching ScreenScraper: ${e.message}", e)
             emptyList()
@@ -108,6 +110,7 @@ class ScreenScraperService @Inject constructor(
      * Get full game details by ScreenScraper game ID.
      */
     suspend fun getVitaGameDetails(ssId: String): VitaGameDetails? = withContext(Dispatchers.IO) {
+        // Note: callApiById can throw ScreenScraperApiException — let it propagate
         try {
             val responseJson = callApiById(ssId) ?: return@withContext null
             val jeu = responseJson.optJSONObject("jeu") ?: return@withContext null
@@ -155,6 +158,8 @@ class ScreenScraperService @Inject constructor(
                 screenshotUrl = screenshotUrl,
                 videoUrl = videoUrl
             )
+        } catch (e: ScreenScraperApiException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error getting ScreenScraper game details: ${e.message}", e)
             null
@@ -188,6 +193,8 @@ class ScreenScraperService @Inject constructor(
 
             // Step 2: Fetch full details by game ID
             getVitaGameDetails(gameId.toString())
+        } catch (e: ScreenScraperApiException) {
+            throw e  // Surface rate-limit / auth errors to the caller
         } catch (e: Exception) {
             Log.e(TAG, "Error getting ScreenScraper details by name: ${e.message}", e)
             null
@@ -295,6 +302,12 @@ class ScreenScraperService @Inject constructor(
         return makeRequest(url)
     }
 
+    /**
+     * Makes an HTTP request and returns the parsed `response` JSON object.
+     * Returns null only when the game genuinely isn't found (200 with no data).
+     * Throws [ScreenScraperApiException] for HTTP errors (rate limiting, auth, etc.)
+     * so callers can surface a meaningful message to the user.
+     */
     private fun makeRequest(urlString: String): JSONObject? {
         var connection: HttpURLConnection? = null
         return try {
@@ -313,15 +326,33 @@ class ScreenScraperService @Inject constructor(
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val responseText = connection.inputStream.bufferedReader().readText()
                 val json = JSONObject(responseText)
-                json.optJSONObject("response")
+                val response = json.optJSONObject("response")
+
+                // Check for server-side error embedded in a 200 response
+                val serverError = response?.optJSONObject("serveur")?.optString("erreur")
+                if (!serverError.isNullOrBlank()) {
+                    Log.w(TAG, "ScreenScraper server error: $serverError")
+                    throw ScreenScraperApiException(serverError)
+                }
+
+                response
             } else {
-                val errorText = connection.errorStream?.bufferedReader()?.readText() ?: ""
-                Log.w(TAG, "ScreenScraper error $responseCode: $errorText")
-                null
+                val errorBody = connection.errorStream?.bufferedReader()?.readText()?.take(300) ?: ""
+                Log.w(TAG, "ScreenScraper HTTP $responseCode: $errorBody")
+                val message = when (responseCode) {
+                    429, 430 -> "ScreenScraper daily scrape limit reached (devid). Add your ScreenScraper account credentials for a higher limit."
+                    431 -> "Your ScreenScraper account has reached its daily scrape limit. Try again tomorrow."
+                    401 -> "ScreenScraper credentials are invalid. Check your username and password in Settings."
+                    400 -> "ScreenScraper rejected the request (400). $errorBody"
+                    else -> "ScreenScraper returned HTTP $responseCode. $errorBody"
+                }
+                throw ScreenScraperApiException(message)
             }
+        } catch (e: ScreenScraperApiException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "ScreenScraper request failed: ${e.message}", e)
-            null
+            throw ScreenScraperApiException("Network error connecting to ScreenScraper: ${e.message}")
         } finally {
             connection?.disconnect()
         }
@@ -409,6 +440,12 @@ class ScreenScraperService @Inject constructor(
         }
     }
 }
+
+/**
+ * Thrown when ScreenScraper API returns an error (rate limit, auth failure, network error).
+ * Used to surface a human-readable message to the user instead of a generic "no metadata found".
+ */
+class ScreenScraperApiException(message: String) : Exception(message)
 
 /**
  * Full game details returned by ScreenScraper

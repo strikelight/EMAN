@@ -9,6 +9,7 @@ import com.esde.emulatormanager.data.service.DeviceIdentificationService
 import com.esde.emulatormanager.data.service.GogApiService
 import com.esde.emulatormanager.data.service.MetadataService
 import com.esde.emulatormanager.data.service.ProfileService
+import com.esde.emulatormanager.data.service.ScreenScraperApiException
 import com.esde.emulatormanager.data.service.SteamApiService
 import com.esde.emulatormanager.data.service.VitaGamesService
 import com.esde.emulatormanager.data.service.WindowsGamesService
@@ -1772,10 +1773,16 @@ class MainViewModel @Inject constructor(
                     game
                 }
 
+                var apiError: String? = null
                 val success = try {
                     metadataService.scrapeAndSaveVitaMetadata(gameToScrape, options)
+                } catch (e: ScreenScraperApiException) {
+                    android.util.Log.w("MainViewModel", "ScreenScraper API error: ${e.message}")
+                    apiError = e.message
+                    false
                 } catch (e: Exception) {
                     android.util.Log.e("MainViewModel", "Vita re-scrape error: ${e.message}", e)
+                    apiError = "Scrape failed: ${e.message}"
                     false
                 }
 
@@ -1785,11 +1792,8 @@ class MainViewModel @Inject constructor(
                         isScraping = false,
                         games = games,
                         gamesWithoutMetadataCount = metadataService.getVitaGamesWithoutMetadataCount(),
-                        successMessage = if (success) {
-                            "Re-scraped metadata for ${game.displayName}"
-                        } else {
-                            "No metadata found for ${game.displayName}"
-                        }
+                        successMessage = if (success) "Re-scraped metadata for ${game.displayName}" else null,
+                        error = if (!success) apiError ?: "No metadata found for \"${game.displayName}\" on ScreenScraper" else null
                     )
                 }
             }
