@@ -201,6 +201,8 @@ fun VitaGamesScreen(
             item {
                 IgdbCredentialsCard(
                     currentClientId = currentIgdbClientId,
+                    hasIgdbCredentials = uiState.hasIgdbCredentials,
+                    gamesWithoutMetadataCount = uiState.gamesWithoutMetadataCount,
                     onSetCredentials = onSetIgdbCredentials
                 )
             }
@@ -296,6 +298,8 @@ private fun VitaPathCard(
 @Composable
 private fun IgdbCredentialsCard(
     currentClientId: String?,
+    hasIgdbCredentials: Boolean,
+    gamesWithoutMetadataCount: Int,
     onSetCredentials: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -402,14 +406,16 @@ private fun IgdbCredentialsCard(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = if (currentClientId != null) {
-                        "Configured (ID: …${currentClientId.takeLast(6)})"
+                    text = if (!hasIgdbCredentials) {
+                        "IGDB credentials not configured"
+                    } else if (gamesWithoutMetadataCount > 0) {
+                        "$gamesWithoutMetadataCount games missing metadata"
                     } else {
-                        "Required for PS Vita metadata scraping"
+                        "All games have metadata"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (currentClientId != null) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.error
+                    color = if (!hasIgdbCredentials) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             TextButton(
