@@ -397,8 +397,9 @@ private fun IgdbCredentialsCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "IGDB / Twitch API",
-                    style = MaterialTheme.typography.titleSmall
+                    text = "Game Metadata (IGDB)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = if (currentClientId != null) {
