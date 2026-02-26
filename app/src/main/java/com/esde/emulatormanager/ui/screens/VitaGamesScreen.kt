@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -32,6 +33,7 @@ import com.esde.emulatormanager.data.model.ScrapeOptions
 import com.esde.emulatormanager.data.model.ScrapeProgress
 import com.esde.emulatormanager.data.model.VitaGame
 import com.esde.emulatormanager.data.model.VitaGamesUiState
+import com.esde.emulatormanager.ui.components.HelpIconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +55,7 @@ fun VitaGamesScreen(
     onSetIgdbCredentials: (String, String) -> Unit = { _, _ -> },
     currentIgdbClientId: String? = null,
     getArtworkPath: (String) -> String? = { null },
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -149,6 +152,14 @@ fun VitaGamesScreen(
                         }
                     }
                 },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back to Games Hub"
+                        )
+                    }
+                },
                 actions = {
                     IconButton(
                         onClick = onScanGames,
@@ -172,6 +183,27 @@ fun VitaGamesScreen(
                             contentDescription = "Scrape settings"
                         )
                     }
+                    HelpIconButton(
+                        title = "PS Vita Games",
+                        description = "Manage PS Vita game shortcuts for ES-DE, launched via Vita3K.",
+                        features = listOf(
+                            "Each game is stored as a .psvita shortcut file containing its Title ID",
+                            "Title IDs are assigned by Sony — find them in Vita3K's game list (e.g. PCSE00120)",
+                            "Tap + to add a game: search IGDB to auto-fill the Title ID, or enter it manually",
+                            "Title ID is auto-suggested from a bundled database of 3,600+ titles when using IGDB search",
+                            "Set the ROM folder path using the edit icon on the path card",
+                            "Game Metadata card scrapes descriptions, ratings, and artwork from IGDB",
+                            "IGDB requires a free Twitch developer account — tap the gear icon to configure",
+                            "Tap ⋮ on a game to re-scrape its metadata individually",
+                            "Scrape settings (tune icon) controls what is downloaded: metadata, artwork, and/or videos"
+                        ),
+                        iconLegends = listOf(
+                            Icons.AutoMirrored.Filled.ArrowBack to "Back — return to the Games Hub",
+                            Icons.Default.Refresh to "Refresh — rescan the PS Vita ROM folder",
+                            Icons.Default.Tune to "Scrape Settings — configure what metadata/artwork to download",
+                            Icons.Outlined.Info to "Help — show this info dialog"
+                        )
+                    )
                 }
             )
         },

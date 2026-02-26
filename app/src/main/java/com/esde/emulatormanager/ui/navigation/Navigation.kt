@@ -406,7 +406,8 @@ private fun NavHostContent(
                 onSetPendingReScrapeGame = viewModel::setPendingReScrapeWindowsGame,
                 onReScrapeGame = viewModel::reScrapeWindowsGame,
                 onClearPendingReScrape = viewModel::clearPendingReScrapeWindowsGame,
-                getArtworkPath = viewModel::getWindowsGameArtworkPath
+                getArtworkPath = viewModel::getWindowsGameArtworkPath,
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -446,7 +447,8 @@ private fun NavHostContent(
                 onReScrapeGame = { game -> viewModel.reScrapeAndroidGame(game) },
                 onReScrapeGameWithTerm = { game, term -> viewModel.reScrapeAndroidGame(game, term) },
                 onClearPendingReScrape = viewModel::clearPendingReScrapeGame,
-                currentIgdbClientId = viewModel.getIgdbClientId()
+                currentIgdbClientId = viewModel.getIgdbClientId(),
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -525,7 +527,8 @@ private fun NavHostContent(
                 onSavePath = viewModel::saveVitaRomsPath,
                 onSetIgdbCredentials = viewModel::setIgdbCredentials,
                 currentIgdbClientId = viewModel.getIgdbClientId(),
-                getArtworkPath = viewModel::getVitaGameArtworkPath
+                getArtworkPath = viewModel::getVitaGameArtworkPath,
+                onBack = { navController.popBackStack() }
             )
         }
 

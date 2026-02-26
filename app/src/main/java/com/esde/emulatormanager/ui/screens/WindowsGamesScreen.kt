@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -61,6 +62,7 @@ fun WindowsGamesScreen(
     onReScrapeGame: (WindowsGameShortcut) -> Unit = {},
     onClearPendingReScrape: () -> Unit = {},
     getArtworkPath: (String) -> String? = { null },
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -127,6 +129,14 @@ fun WindowsGamesScreen(
                         }
                     }
                 },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back to Games Hub"
+                        )
+                    }
+                },
                 actions = {
                     IconButton(
                         onClick = onScanGames,
@@ -168,6 +178,7 @@ fun WindowsGamesScreen(
                             "Set custom Windows ROMs folder path via the edit icon on the path card"
                         ),
                         iconLegends = listOf(
+                            Icons.AutoMirrored.Filled.ArrowBack to "Back — return to the Games Hub",
                             Icons.Default.Refresh to "Refresh — rescan Windows launchers for games",
                             Icons.Default.Tune to "Scrape Settings — configure what metadata/artwork to download",
                             Icons.Outlined.Info to "Help — show this info dialog"

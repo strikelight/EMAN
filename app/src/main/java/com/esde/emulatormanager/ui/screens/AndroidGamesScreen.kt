@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -68,6 +69,7 @@ fun AndroidGamesScreen(
     onReScrapeGameWithTerm: (AndroidGame, String) -> Unit = { _, _ -> },
     onClearPendingReScrape: () -> Unit = {},
     currentIgdbClientId: String? = null,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -134,6 +136,14 @@ fun AndroidGamesScreen(
                             )
                         }
                     },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to Games Hub"
+                            )
+                        }
+                    },
                     actions = {
                         // Show All Apps toggle
                         IconButton(onClick = onToggleShowAllApps) {
@@ -176,6 +186,7 @@ fun AndroidGamesScreen(
                                 "Tap ⋮ on an added game to re-scrape its metadata individually (requires IGDB credentials)"
                             ),
                             iconLegends = listOf(
+                                Icons.AutoMirrored.Filled.ArrowBack to "Back — return to the Games Hub",
                                 Icons.Default.FilterAlt to "Filter — toggle between current category only / all apps",
                                 Icons.Default.Refresh to "Refresh — rescan installed apps",
                                 Icons.Outlined.Info to "Help — show this info dialog"
