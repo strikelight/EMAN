@@ -23,10 +23,10 @@ import com.esde.emulatormanager.data.model.VitaSearchResult
 /**
  * Screen for adding a PS Vita game to ES-DE.
  * Offers two modes:
- *  1. ScreenScraper search — look up by game name; user must always supply the Title ID manually
+ *  1. IGDB search — look up by game name; user must always supply the Title ID manually
  *  2. Manual entry — display name + Title ID
  *
- * Title IDs are not returned by ScreenScraper; the user gets them from the Vita3K game list
+ * Title IDs are not returned by IGDB; the user gets them from the Vita3K game list
  * (e.g., PCSG00123 for a JP retail game, PCSB00xxx for EU, PCSE00xxx for US).
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,10 +111,10 @@ fun AddVitaGameScreen(
                 VitaInfoCard()
             }
 
-            // ScreenScraper search section
+            // IGDB search section
             item {
                 Text(
-                    text = "Search ScreenScraper",
+                    text = "Search IGDB",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(bottom = 4.dp)
@@ -195,7 +195,7 @@ fun AddVitaGameScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "No results found on ScreenScraper. Try manual entry below.",
+                                text = "No results found on IGDB. Try manual entry below.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
