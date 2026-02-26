@@ -1528,6 +1528,7 @@ class MainViewModel @Inject constructor(
     fun setIgdbCredentials(clientId: String, clientSecret: String) {
         metadataService.setIgdbCredentials(clientId, clientSecret)
         _androidGamesState.update { it.copy(hasIgdbCredentials = true) }
+        _vitaGamesState.update { it.copy(hasIgdbCredentials = true) }
     }
 
     /**
@@ -1541,6 +1542,7 @@ class MainViewModel @Inject constructor(
     fun clearIgdbCredentials() {
         metadataService.clearIgdbCredentials()
         _androidGamesState.update { it.copy(hasIgdbCredentials = false) }
+        _vitaGamesState.update { it.copy(hasIgdbCredentials = false) }
     }
 
     // ========== PS Vita Games Functions ==========
@@ -1837,14 +1839,6 @@ class MainViewModel @Inject constructor(
     fun updateVitaScrapeOptions(options: ScrapeOptions) {
         _vitaGamesState.update { it.copy(scrapeOptions = options, showScrapeOptionsDialog = false) }
     }
-
-    // IGDB credentials for Vita scraping — shared with Android scraping
-    fun setVitaIgdbCredentials(clientId: String, clientSecret: String) {
-        metadataService.setIgdbCredentials(clientId, clientSecret)
-        _vitaGamesState.update { it.copy(hasIgdbCredentials = true) }
-    }
-
-    fun getVitaIgdbClientId(): String? = metadataService.getIgdbClientId()
 
     // ========== Games Hub Counts ==========
 

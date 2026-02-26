@@ -11,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -298,25 +300,47 @@ private fun IgdbCredentialsCard(
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var clientId by remember { mutableStateOf("") }
+    var clientId by remember { mutableStateOf(currentClientId ?: "") }
     var clientSecret by remember { mutableStateOf("") }
 
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("IGDB / Twitch API Credentials") },
+            title = { Text("IGDB API Configuration") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
                     Text(
-                        text = "PS Vita metadata is fetched from IGDB, which requires a free Twitch Developer account.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "IGDB uses Twitch authentication. Follow these steps:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
                     )
-                    Text(
-                        text = "1. Go to dev.twitch.tv/console\n2. Register an application\n3. Copy your Client ID and generate a Client Secret",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(12.dp)
+                    ) {
+                        Text(text = "1. Go to dev.twitch.tv/console", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "2. Log in with your Twitch account (create one if needed)", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "3. Click \"+ Register Your Application\"", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "4. Fill in the form:", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "   • Name: Any name (e.g., \"ESDE Manager\")", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "   • OAuth Redirect URLs: http://localhost", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "   • Category: Application Integration", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "   • Client Type: Confidential", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "5. Click \"Create\"", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "6. Click \"Manage\" on your new app", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "7. Copy the Client ID shown", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "8. Click \"New Secret\" to generate a Client Secret", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = clientId,
                         onValueChange = { clientId = it },
@@ -334,13 +358,12 @@ private fun IgdbCredentialsCard(
                 }
             },
             confirmButton = {
-                Button(
+                TextButton(
                     onClick = {
-                        if (clientId.isNotBlank() && clientSecret.isNotBlank()) {
-                            onSetCredentials(clientId.trim(), clientSecret.trim())
-                        }
+                        onSetCredentials(clientId.trim(), clientSecret.trim())
                         showDialog = false
-                    }
+                    },
+                    enabled = clientId.isNotBlank() && clientSecret.isNotBlank()
                 ) {
                     Text("Save")
                 }
