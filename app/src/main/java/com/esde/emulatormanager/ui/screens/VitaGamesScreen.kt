@@ -383,7 +383,7 @@ private fun IgdbCredentialsCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
         )
     ) {
         Row(
@@ -393,9 +393,9 @@ private fun IgdbCredentialsCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Outlined.AccountCircle,
+                imageVector = Icons.Outlined.Description,
                 contentDescription = null,
-                tint = if (currentClientId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -418,14 +418,34 @@ private fun IgdbCredentialsCard(
                             else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            TextButton(
-                onClick = {
-                    clientId = ""
+            if (!hasIgdbCredentials) {
+                FilledTonalButton(
+                    onClick = {
+                        clientId = currentClientId ?: ""
+                        clientSecret = ""
+                        showDialog = true
+                    },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Setup")
+                }
+            } else {
+                IconButton(onClick = {
+                    clientId = currentClientId ?: ""
                     clientSecret = ""
                     showDialog = true
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Configure IGDB"
+                    )
                 }
-            ) {
-                Text(if (currentClientId != null) "Change" else "Configure")
             }
         }
     }
