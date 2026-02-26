@@ -43,6 +43,7 @@ fun AddVitaGameScreen(
     onDismissError: () -> Unit,
     onDismissSuccess: () -> Unit,
     onBack: () -> Unit,
+    onLookupTitleId: (String) -> String? = { null },
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
@@ -166,7 +167,17 @@ fun AddVitaGameScreen(
                         isExpanded = isExpanded,
                         titleId = titleId,
                         onExpand = {
-                            expandedResultId = if (isExpanded) null else result.ssId
+                            if (!isExpanded) {
+                                expandedResultId = result.ssId
+                                // Auto-fill Title ID from bundled database if not already set
+                                if (resultTitleIds[result.ssId].isNullOrBlank()) {
+                                    onLookupTitleId(result.name)?.let {
+                                        resultTitleIds[result.ssId] = it
+                                    }
+                                }
+                            } else {
+                                expandedResultId = null
+                            }
                         },
                         onTitleIdChange = { resultTitleIds[result.ssId] = it },
                         onAdd = {

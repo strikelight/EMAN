@@ -11,6 +11,7 @@ import com.esde.emulatormanager.data.service.MetadataService
 import com.esde.emulatormanager.data.service.ProfileService
 import com.esde.emulatormanager.data.service.SteamApiService
 import com.esde.emulatormanager.data.service.VitaGamesService
+import com.esde.emulatormanager.data.service.VitaTitleDatabase
 import com.esde.emulatormanager.data.service.WindowsGamesService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +33,8 @@ class MainViewModel @Inject constructor(
     private val profileService: ProfileService,
     private val deviceIdentificationService: DeviceIdentificationService,
     private val metadataService: MetadataService,
-    private val vitaGamesService: VitaGamesService
+    private val vitaGamesService: VitaGamesService,
+    private val vitaTitleDatabase: VitaTitleDatabase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -1839,6 +1841,9 @@ class MainViewModel @Inject constructor(
     fun updateVitaScrapeOptions(options: ScrapeOptions) {
         _vitaGamesState.update { it.copy(scrapeOptions = options, showScrapeOptionsDialog = false) }
     }
+
+    /** Look up the best-matching PS Vita Title ID for a given game name from the bundled database. */
+    fun lookupVitaTitleId(gameName: String): String? = vitaTitleDatabase.findBestMatch(gameName)
 
     // ========== Games Hub Counts ==========
 

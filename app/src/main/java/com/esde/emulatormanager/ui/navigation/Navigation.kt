@@ -543,6 +543,7 @@ private fun NavHostContent(
                 },
                 onDismissError = viewModel::clearVitaError,
                 onDismissSuccess = viewModel::clearVitaSuccess,
+                onLookupTitleId = viewModel::lookupVitaTitleId,
                 onBack = {
                     viewModel.clearVitaSearchResults()
                     navController.popBackStack()
