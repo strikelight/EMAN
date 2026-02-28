@@ -1992,10 +1992,12 @@ class MainViewModel @Inject constructor(
                         loadData()
                         loadAndroidGames()
                         loadWindowsGames()
+                        loadVitaGames()
 
                         // Refresh IGDB credentials state in case the profile restored them
                         val hasCredentials = metadataService.hasIgdbCredentials()
                         _androidGamesState.update { it.copy(hasIgdbCredentials = hasCredentials) }
+                        _vitaGamesState.update { it.copy(hasIgdbCredentials = hasCredentials) }
 
                         // Build detailed success message
                         val message = loadResult.getSummary()

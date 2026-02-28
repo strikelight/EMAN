@@ -62,6 +62,15 @@ data class EpicShortcutData(
 )
 
 /**
+ * Lightweight shortcut data for PS Vita games (.psvita files)
+ */
+data class VitaShortcutData(
+    val titleId: String,     // content of the .psvita file (e.g., "PCSE00120")
+    val displayName: String,
+    val fileName: String     // e.g., "Persona 4 Golden.psvita"
+)
+
+/**
  * The actual configuration data stored in a profile.
  * Only stores user-specified custom paths, not ES-DE resolved paths.
  * This allows profiles to work across devices with different ES-DE configurations.
@@ -85,13 +94,17 @@ data class ProfileConfiguration(
     val windowsGameShortcuts: List<WindowsShortcutData> = emptyList(),
     val steamGameShortcuts: List<SteamShortcutData> = emptyList(),
     val gogGameShortcuts: List<GogShortcutData> = emptyList(),
-    val epicGameShortcuts: List<EpicShortcutData> = emptyList()
+    val epicGameShortcuts: List<EpicShortcutData> = emptyList(),
+    // PS Vita
+    val customVitaPath: String? = null,
+    val vitaGameShortcuts: List<VitaShortcutData> = emptyList()
 ) {
     /** Total count of all shortcuts */
     val totalShortcuts: Int
         get() = androidGameShortcuts.size + androidAppShortcuts.size +
                 androidEmulatorShortcuts.size + windowsGameShortcuts.size +
-                steamGameShortcuts.size + gogGameShortcuts.size + epicGameShortcuts.size
+                steamGameShortcuts.size + gogGameShortcuts.size + epicGameShortcuts.size +
+                vitaGameShortcuts.size
 }
 
 /**
@@ -126,6 +139,9 @@ data class Profile(
                     config.gogGameShortcuts.size + config.epicGameShortcuts.size
             parts.add("$windowsTotal Windows games")
         }
+        if (config.vitaGameShortcuts.isNotEmpty()) {
+            parts.add("${config.vitaGameShortcuts.size} PS Vita games")
+        }
 
         return if (parts.isEmpty()) "Empty profile" else parts.joinToString(", ")
     }
@@ -153,6 +169,7 @@ data class ProfileLoadResult(
     val steamGamesCleared: Int = 0,
     val gogGamesCleared: Int = 0,
     val epicGamesCleared: Int = 0,
+    val vitaGamesCleared: Int = 0,
     val androidGamesRestored: Int = 0,
     val androidAppsRestored: Int = 0,
     val androidEmulatorsRestored: Int = 0,
@@ -160,15 +177,18 @@ data class ProfileLoadResult(
     val steamGamesRestored: Int = 0,
     val gogGamesRestored: Int = 0,
     val epicGamesRestored: Int = 0,
+    val vitaGamesRestored: Int = 0,
     val errorMessage: String? = null
 ) {
     fun getSummary(): String {
         if (!success) return errorMessage ?: "Failed to load profile"
 
         val cleared = androidGamesCleared + androidAppsCleared + androidEmulatorsCleared +
-                windowsGamesCleared + steamGamesCleared + gogGamesCleared + epicGamesCleared
+                windowsGamesCleared + steamGamesCleared + gogGamesCleared + epicGamesCleared +
+                vitaGamesCleared
         val restored = androidGamesRestored + androidAppsRestored + androidEmulatorsRestored +
-                windowsGamesRestored + steamGamesRestored + gogGamesRestored + epicGamesRestored
+                windowsGamesRestored + steamGamesRestored + gogGamesRestored + epicGamesRestored +
+                vitaGamesRestored
 
         return "Loaded '$profileName': cleared $cleared shortcuts, restored $restored shortcuts"
     }

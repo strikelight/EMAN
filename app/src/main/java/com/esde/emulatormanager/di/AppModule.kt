@@ -113,7 +113,8 @@ object AppModule {
         androidGamesService: AndroidGamesService,
         windowsGamesService: WindowsGamesService,
         deviceIdentificationService: DeviceIdentificationService,
-        igdbService: IgdbService
+        igdbService: IgdbService,
+        vitaGamesService: VitaGamesService
     ): ProfileService {
         return ProfileService(
             context,
@@ -122,7 +123,8 @@ object AppModule {
             androidGamesService,
             windowsGamesService,
             deviceIdentificationService,
-            igdbService
+            igdbService,
+            vitaGamesService
         )
     }
 

@@ -26,7 +26,8 @@ class ProfileService @Inject constructor(
     private val androidGamesService: AndroidGamesService,
     private val windowsGamesService: WindowsGamesService,
     private val deviceIdentificationService: DeviceIdentificationService,
-    private val igdbService: IgdbService
+    private val igdbService: IgdbService,
+    private val vitaGamesService: VitaGamesService
 ) {
     companion object {
         private const val TAG = "ProfileService"
@@ -41,6 +42,7 @@ class ProfileService @Inject constructor(
         private const val STEAM_EXTENSION = ".steam"
         private const val GOG_EXTENSION = ".gog"
         private const val EPIC_EXTENSION = ".epic"
+        private const val VITA_EXTENSION = ".psvita"
 
         /** Check if a filename is an Android shortcut file */
         private fun isAndroidShortcut(fileName: String): Boolean {
@@ -208,13 +210,15 @@ class ProfileService @Inject constructor(
             steamGamesCleared = applyResult.steamResult.cleared,
             gogGamesCleared = applyResult.gogResult.cleared,
             epicGamesCleared = applyResult.epicResult.cleared,
+            vitaGamesCleared = applyResult.vitaResult.cleared,
             androidGamesRestored = applyResult.gamesResult.restored,
             androidAppsRestored = applyResult.appsResult.restored,
             androidEmulatorsRestored = applyResult.emulatorsResult.restored,
             windowsGamesRestored = applyResult.windowsResult.restored,
             steamGamesRestored = applyResult.steamResult.restored,
             gogGamesRestored = applyResult.gogResult.restored,
-            epicGamesRestored = applyResult.epicResult.restored
+            epicGamesRestored = applyResult.epicResult.restored,
+            vitaGamesRestored = applyResult.vitaResult.restored
         )
 
         return ConfigResult.Success(loadResult)
@@ -387,6 +391,7 @@ class ProfileService @Inject constructor(
         val customApps = androidGamesService.customAppsPath
         val customEmulators = androidGamesService.customEmulatorsPath
         val customWindows = windowsGamesService.customWindowsPath
+        val customVita = vitaGamesService.customVitaPath
 
         // Capture IGDB credentials (if configured)
         val igdbClientId = igdbService.getClientId()
@@ -401,6 +406,7 @@ class ProfileService @Inject constructor(
         Log.d(TAG, "  Custom Apps: $customApps")
         Log.d(TAG, "  Custom Emulators: $customEmulators")
         Log.d(TAG, "  Custom Windows: $customWindows")
+        Log.d(TAG, "  Custom Vita: $customVita")
         Log.d(TAG, "  IGDB Client ID: ${if (igdbClientId != null) "(set)" else "(not set)"}")
 
         return ProfileConfiguration(
@@ -421,7 +427,10 @@ class ProfileService @Inject constructor(
             windowsGameShortcuts = captureWindowsShortcuts(),
             steamGameShortcuts = captureSteamShortcuts(),
             gogGameShortcuts = captureGogShortcuts(),
-            epicGameShortcuts = captureEpicShortcuts()
+            epicGameShortcuts = captureEpicShortcuts(),
+            // PS Vita
+            customVitaPath = customVita,
+            vitaGameShortcuts = captureVitaShortcuts()
         )
     }
 
@@ -593,6 +602,36 @@ class ProfileService @Inject constructor(
     }
 
     /**
+     * Capture PS Vita game shortcuts (.psvita files).
+     */
+    private fun captureVitaShortcuts(): List<VitaShortcutData> {
+        val path = vitaGamesService.getEsdeVitaPath() ?: return emptyList()
+        val dir = File(path)
+        if (!dir.exists() || !dir.isDirectory) return emptyList()
+
+        val shortcuts = mutableListOf<VitaShortcutData>()
+        dir.listFiles()?.forEach { file ->
+            if (file.name.endsWith(VITA_EXTENSION, ignoreCase = true)) {
+                try {
+                    val titleId = file.readText().trim()
+                    if (titleId.isNotBlank()) {
+                        shortcuts.add(VitaShortcutData(
+                            titleId = titleId,
+                            displayName = file.nameWithoutExtension,
+                            fileName = file.name
+                        ))
+                        Log.d(TAG, "Captured PS Vita shortcut: ${file.name}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error reading PS Vita shortcut: ${file.name}", e)
+                }
+            }
+        }
+        Log.d(TAG, "Captured ${shortcuts.size} PS Vita shortcuts from $path")
+        return shortcuts
+    }
+
+    /**
      * Parse a .desktop file to extract shortcut data.
      */
     private fun parseDesktopFile(content: String, fileName: String): WindowsShortcutData? {
@@ -646,7 +685,8 @@ class ProfileService @Inject constructor(
         val windowsResult: RestoreResult,
         val steamResult: RestoreResult,
         val gogResult: RestoreResult,
-        val epicResult: RestoreResult
+        val epicResult: RestoreResult,
+        val vitaResult: RestoreResult
     )
 
     /**
@@ -660,6 +700,7 @@ class ProfileService @Inject constructor(
         Log.d(TAG, "=== applyConfiguration START ===")
         Log.d(TAG, "Profile shortcuts: Games=${config.androidGameShortcuts.size}, Apps=${config.androidAppShortcuts.size}, Emulators=${config.androidEmulatorShortcuts.size}")
         Log.d(TAG, "Windows shortcuts: ${config.windowsGameShortcuts.size}, Steam: ${config.steamGameShortcuts.size}, GOG: ${config.gogGameShortcuts.size}, Epic: ${config.epicGameShortcuts.size}")
+        Log.d(TAG, "PS Vita shortcuts: ${config.vitaGameShortcuts.size}")
 
         // Start fresh diagnostic log
         val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
@@ -672,11 +713,13 @@ class ProfileService @Inject constructor(
         writeDiagnosticLog("  Steam Games: ${config.steamGameShortcuts.size}")
         writeDiagnosticLog("  GOG Games: ${config.gogGameShortcuts.size}")
         writeDiagnosticLog("  Epic Games: ${config.epicGameShortcuts.size}")
+        writeDiagnosticLog("  PS Vita Games: ${config.vitaGameShortcuts.size}")
         writeDiagnosticLog("Profile custom paths (user-specified only):")
         writeDiagnosticLog("  Custom Games: ${config.customGamesPath ?: "(not set)"}")
         writeDiagnosticLog("  Custom Apps: ${config.customAppsPath ?: "(not set)"}")
         writeDiagnosticLog("  Custom Emulators: ${config.customEmulatorsPath ?: "(not set)"}")
         writeDiagnosticLog("  Custom Windows: ${config.customWindowsPath ?: "(not set)"}")
+        writeDiagnosticLog("  Custom Vita: ${config.customVitaPath ?: "(not set)"}")
 
         // Apply custom paths first (before restoring shortcuts)
         // Only set if the profile has custom paths defined
@@ -685,6 +728,7 @@ class ProfileService @Inject constructor(
         androidGamesService.customAppsPath = config.customAppsPath
         androidGamesService.customEmulatorsPath = config.customEmulatorsPath
         windowsGamesService.customWindowsPath = config.customWindowsPath
+        vitaGamesService.customVitaPath = config.customVitaPath
 
         // Restore IGDB credentials if the profile has them
         val profileClientId = config.igdbClientId
@@ -725,10 +769,12 @@ class ProfileService @Inject constructor(
         val gogResult = restoreGogShortcuts(config.gogGameShortcuts)
         Log.d(TAG, "Restoring Epic shortcuts...")
         val epicResult = restoreEpicShortcuts(config.epicGameShortcuts)
+        Log.d(TAG, "Restoring PS Vita shortcuts...")
+        val vitaResult = restoreVitaShortcuts(config.vitaGameShortcuts)
 
         Log.d(TAG, "=== applyConfiguration END - Applied ${config.totalShortcuts} total shortcuts ===")
 
-        return ApplyResult(gamesResult, appsResult, emulatorsResult, windowsResult, steamResult, gogResult, epicResult)
+        return ApplyResult(gamesResult, appsResult, emulatorsResult, windowsResult, steamResult, gogResult, epicResult, vitaResult)
     }
 
     /**
@@ -1117,6 +1163,59 @@ class ProfileService @Inject constructor(
         return RestoreResult(deletedCount, createdCount)
     }
 
+    /**
+     * Restore PS Vita game shortcuts.
+     * Wipes existing .psvita files and creates new ones from profile data.
+     * Uses current device's Vita path (custom or auto-detected) to determine location.
+     * Returns counts of cleared and restored shortcuts.
+     */
+    private fun restoreVitaShortcuts(shortcuts: List<VitaShortcutData>): RestoreResult {
+        val path = vitaGamesService.getEsdeVitaPath()
+
+        if (path == null) {
+            Log.w(TAG, "Could not find PS Vita path, skipping shortcut restore")
+            return RestoreResult(0, 0)
+        }
+
+        Log.d(TAG, "Using PS Vita path: $path")
+
+        val dir = File(path)
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                Log.e(TAG, "Could not create PS Vita directory: $path")
+                return RestoreResult(0, 0)
+            }
+        }
+
+        // Wipe existing .psvita files
+        var deletedCount = 0
+        dir.listFiles()?.forEach { file ->
+            if (file.name.endsWith(VITA_EXTENSION, ignoreCase = true)) {
+                if (file.delete()) {
+                    deletedCount++
+                    Log.d(TAG, "Deleted existing PS Vita shortcut: ${file.name}")
+                }
+            }
+        }
+        Log.d(TAG, "Cleared $deletedCount existing PS Vita shortcuts")
+
+        // Create shortcuts from profile
+        var createdCount = 0
+        shortcuts.forEach { shortcut ->
+            try {
+                val file = File(dir, shortcut.fileName)
+                file.writeText(shortcut.titleId)
+                createdCount++
+                Log.d(TAG, "Restored PS Vita shortcut: ${shortcut.fileName}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating PS Vita shortcut: ${shortcut.fileName}", e)
+            }
+        }
+        Log.d(TAG, "Restored $createdCount PS Vita shortcuts")
+
+        return RestoreResult(deletedCount, createdCount)
+    }
+
     // ==================== Backup ====================
 
     /**
@@ -1250,6 +1349,9 @@ class ProfileService @Inject constructor(
         val gogGameShortcuts = parseGogShortcuts(json.optJSONArray("gogGameShortcuts"))
         val epicGameShortcuts = parseEpicShortcuts(json.optJSONArray("epicGameShortcuts"))
 
+        // Parse PS Vita shortcuts
+        val vitaGameShortcuts = parseVitaShortcuts(json.optJSONArray("vitaGameShortcuts"))
+
         return ProfileConfiguration(
             customEmulators = customEmulators,
             appClassificationOverrides = overrides,
@@ -1268,7 +1370,10 @@ class ProfileService @Inject constructor(
             windowsGameShortcuts = windowsGameShortcuts,
             steamGameShortcuts = steamGameShortcuts,
             gogGameShortcuts = gogGameShortcuts,
-            epicGameShortcuts = epicGameShortcuts
+            epicGameShortcuts = epicGameShortcuts,
+            // PS Vita
+            customVitaPath = json.optStringOrNull("customVitaPath"),
+            vitaGameShortcuts = vitaGameShortcuts
         )
     }
 
@@ -1346,6 +1451,20 @@ class ProfileService @Inject constructor(
         return shortcuts
     }
 
+    private fun parseVitaShortcuts(array: JSONArray?): List<VitaShortcutData> {
+        if (array == null) return emptyList()
+        val shortcuts = mutableListOf<VitaShortcutData>()
+        for (i in 0 until array.length()) {
+            val json = array.getJSONObject(i)
+            shortcuts.add(VitaShortcutData(
+                titleId = json.getString("titleId"),
+                displayName = json.getString("displayName"),
+                fileName = json.getString("fileName")
+            ))
+        }
+        return shortcuts
+    }
+
     private fun serializeProfilesContainer(container: ProfilesContainer): String {
         val json = JSONObject()
         json.put("version", container.version)
@@ -1390,6 +1509,7 @@ class ProfileService @Inject constructor(
         config.customAppsPath?.let { json.put("customAppsPath", it) }
         config.customEmulatorsPath?.let { json.put("customEmulatorsPath", it) }
         config.customWindowsPath?.let { json.put("customWindowsPath", it) }
+        config.customVitaPath?.let { json.put("customVitaPath", it) }
 
         // IGDB credentials
         config.igdbClientId?.let { json.put("igdbClientId", it) }
@@ -1427,6 +1547,9 @@ class ProfileService @Inject constructor(
         json.put("steamGameShortcuts", serializeSteamShortcuts(config.steamGameShortcuts))
         json.put("gogGameShortcuts", serializeGogShortcuts(config.gogGameShortcuts))
         json.put("epicGameShortcuts", serializeEpicShortcuts(config.epicGameShortcuts))
+
+        // PS Vita shortcuts
+        json.put("vitaGameShortcuts", serializeVitaShortcuts(config.vitaGameShortcuts))
 
         return json
     }
@@ -1489,6 +1612,18 @@ class ProfileService @Inject constructor(
             val json = JSONObject()
             json.put("name", shortcut.name)
             json.put("internalId", shortcut.internalId)
+            json.put("fileName", shortcut.fileName)
+            array.put(json)
+        }
+        return array
+    }
+
+    private fun serializeVitaShortcuts(shortcuts: List<VitaShortcutData>): JSONArray {
+        val array = JSONArray()
+        shortcuts.forEach { shortcut ->
+            val json = JSONObject()
+            json.put("titleId", shortcut.titleId)
+            json.put("displayName", shortcut.displayName)
             json.put("fileName", shortcut.fileName)
             array.put(json)
         }
