@@ -973,11 +973,24 @@ private fun AndroidMetadataScrapeCard(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Game Metadata (IGDB)",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Game Metadata (IGDB)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Icon(
+                            imageVector = if (hasIgdbCredentials) Icons.Outlined.CheckCircle
+                                          else Icons.Outlined.Warning,
+                            contentDescription = if (hasIgdbCredentials) "Configured" else "Not configured",
+                            tint = if (hasIgdbCredentials) MaterialTheme.colorScheme.tertiary
+                                   else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                     Text(
                         text = if (!hasIgdbCredentials) {
                             "IGDB credentials not configured"
