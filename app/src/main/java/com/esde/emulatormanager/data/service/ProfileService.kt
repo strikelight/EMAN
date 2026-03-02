@@ -42,6 +42,7 @@ class ProfileService @Inject constructor(
         private const val STEAM_EXTENSION = ".steam"
         private const val GOG_EXTENSION = ".gog"
         private const val EPIC_EXTENSION = ".epic"
+        private const val AMAZON_EXTENSION = ".amazon"
         private const val VITA_EXTENSION = ".psvita"
 
         /** Check if a filename is an Android shortcut file */
@@ -210,6 +211,7 @@ class ProfileService @Inject constructor(
             steamGamesCleared = applyResult.steamResult.cleared,
             gogGamesCleared = applyResult.gogResult.cleared,
             epicGamesCleared = applyResult.epicResult.cleared,
+            amazonGamesCleared = applyResult.amazonResult.cleared,
             vitaGamesCleared = applyResult.vitaResult.cleared,
             androidGamesRestored = applyResult.gamesResult.restored,
             androidAppsRestored = applyResult.appsResult.restored,
@@ -218,6 +220,7 @@ class ProfileService @Inject constructor(
             steamGamesRestored = applyResult.steamResult.restored,
             gogGamesRestored = applyResult.gogResult.restored,
             epicGamesRestored = applyResult.epicResult.restored,
+            amazonGamesRestored = applyResult.amazonResult.restored,
             vitaGamesRestored = applyResult.vitaResult.restored
         )
 
@@ -428,6 +431,7 @@ class ProfileService @Inject constructor(
             steamGameShortcuts = captureSteamShortcuts(),
             gogGameShortcuts = captureGogShortcuts(),
             epicGameShortcuts = captureEpicShortcuts(),
+            amazonGameShortcuts = captureAmazonShortcuts(),
             // PS Vita
             customVitaPath = customVita,
             vitaGameShortcuts = captureVitaShortcuts()
@@ -602,6 +606,36 @@ class ProfileService @Inject constructor(
     }
 
     /**
+     * Capture Amazon game shortcuts (.amazon files).
+     */
+    private fun captureAmazonShortcuts(): List<AmazonShortcutData> {
+        val path = windowsGamesService.getEsdeWindowsPath() ?: return emptyList()
+        val dir = File(path)
+        if (!dir.exists() || !dir.isDirectory) return emptyList()
+
+        val shortcuts = mutableListOf<AmazonShortcutData>()
+        dir.listFiles()?.forEach { file ->
+            if (file.name.endsWith(AMAZON_EXTENSION, ignoreCase = true)) {
+                try {
+                    val internalId = file.readText().trim()
+                    if (internalId.isNotBlank()) {
+                        shortcuts.add(AmazonShortcutData(
+                            internalId = internalId,
+                            name = file.nameWithoutExtension,
+                            fileName = file.name
+                        ))
+                        Log.d(TAG, "Captured Amazon shortcut: ${file.name}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error reading Amazon shortcut: ${file.name}", e)
+                }
+            }
+        }
+        Log.d(TAG, "Captured ${shortcuts.size} Amazon shortcuts from $path")
+        return shortcuts
+    }
+
+    /**
      * Capture PS Vita game shortcuts (.psvita files).
      */
     private fun captureVitaShortcuts(): List<VitaShortcutData> {
@@ -686,6 +720,7 @@ class ProfileService @Inject constructor(
         val steamResult: RestoreResult,
         val gogResult: RestoreResult,
         val epicResult: RestoreResult,
+        val amazonResult: RestoreResult,
         val vitaResult: RestoreResult
     )
 
@@ -701,6 +736,7 @@ class ProfileService @Inject constructor(
         Log.d(TAG, "Profile shortcuts: Games=${config.androidGameShortcuts.size}, Apps=${config.androidAppShortcuts.size}, Emulators=${config.androidEmulatorShortcuts.size}")
         Log.d(TAG, "Windows shortcuts: ${config.windowsGameShortcuts.size}, Steam: ${config.steamGameShortcuts.size}, GOG: ${config.gogGameShortcuts.size}, Epic: ${config.epicGameShortcuts.size}")
         Log.d(TAG, "PS Vita shortcuts: ${config.vitaGameShortcuts.size}")
+        Log.d(TAG, "Amazon shortcuts: ${config.amazonGameShortcuts.size}")
 
         // Start fresh diagnostic log
         val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
@@ -713,6 +749,7 @@ class ProfileService @Inject constructor(
         writeDiagnosticLog("  Steam Games: ${config.steamGameShortcuts.size}")
         writeDiagnosticLog("  GOG Games: ${config.gogGameShortcuts.size}")
         writeDiagnosticLog("  Epic Games: ${config.epicGameShortcuts.size}")
+        writeDiagnosticLog("  Amazon Games: ${config.amazonGameShortcuts.size}")
         writeDiagnosticLog("  PS Vita Games: ${config.vitaGameShortcuts.size}")
         writeDiagnosticLog("Profile custom paths (user-specified only):")
         writeDiagnosticLog("  Custom Games: ${config.customGamesPath ?: "(not set)"}")
@@ -769,12 +806,14 @@ class ProfileService @Inject constructor(
         val gogResult = restoreGogShortcuts(config.gogGameShortcuts)
         Log.d(TAG, "Restoring Epic shortcuts...")
         val epicResult = restoreEpicShortcuts(config.epicGameShortcuts)
+        Log.d(TAG, "Restoring Amazon shortcuts...")
+        val amazonResult = restoreAmazonShortcuts(config.amazonGameShortcuts)
         Log.d(TAG, "Restoring PS Vita shortcuts...")
         val vitaResult = restoreVitaShortcuts(config.vitaGameShortcuts)
 
         Log.d(TAG, "=== applyConfiguration END - Applied ${config.totalShortcuts} total shortcuts ===")
 
-        return ApplyResult(gamesResult, appsResult, emulatorsResult, windowsResult, steamResult, gogResult, epicResult, vitaResult)
+        return ApplyResult(gamesResult, appsResult, emulatorsResult, windowsResult, steamResult, gogResult, epicResult, amazonResult, vitaResult)
     }
 
     /**
@@ -1164,6 +1203,57 @@ class ProfileService @Inject constructor(
     }
 
     /**
+     * Restore Amazon game shortcuts.
+     * Wipes existing .amazon files and creates new ones from profile data.
+     * Uses current device's ES-DE config (or custom path if set) to determine paths.
+     * Returns counts of cleared and restored shortcuts.
+     */
+    private fun restoreAmazonShortcuts(shortcuts: List<AmazonShortcutData>): RestoreResult {
+        val path = windowsGamesService.getEsdeWindowsPath()
+
+        if (path == null) {
+            Log.w(TAG, "Could not find Windows path, skipping Amazon shortcut restore")
+            return RestoreResult(0, 0)
+        }
+
+        val dir = File(path)
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                Log.e(TAG, "Could not create Amazon directory: $path")
+                return RestoreResult(0, 0)
+            }
+        }
+
+        // Wipe existing .amazon files
+        var deletedCount = 0
+        dir.listFiles()?.forEach { file ->
+            if (file.name.endsWith(AMAZON_EXTENSION, ignoreCase = true)) {
+                if (file.delete()) {
+                    deletedCount++
+                    Log.d(TAG, "Deleted existing Amazon shortcut: ${file.name}")
+                }
+            }
+        }
+        Log.d(TAG, "Cleared $deletedCount existing Amazon shortcuts")
+
+        // Create shortcuts from profile
+        var createdCount = 0
+        shortcuts.forEach { shortcut ->
+            try {
+                val file = File(dir, shortcut.fileName)
+                file.writeText(shortcut.internalId)
+                createdCount++
+                Log.d(TAG, "Restored Amazon shortcut: ${shortcut.fileName}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating Amazon shortcut: ${shortcut.fileName}", e)
+            }
+        }
+        Log.d(TAG, "Restored $createdCount Amazon shortcuts")
+
+        return RestoreResult(deletedCount, createdCount)
+    }
+
+    /**
      * Restore PS Vita game shortcuts.
      * Wipes existing .psvita files and creates new ones from profile data.
      * Uses current device's Vita path (custom or auto-detected) to determine location.
@@ -1349,6 +1439,9 @@ class ProfileService @Inject constructor(
         val gogGameShortcuts = parseGogShortcuts(json.optJSONArray("gogGameShortcuts"))
         val epicGameShortcuts = parseEpicShortcuts(json.optJSONArray("epicGameShortcuts"))
 
+        // Parse Amazon shortcuts
+        val amazonGameShortcuts = parseAmazonShortcuts(json.optJSONArray("amazonGameShortcuts"))
+
         // Parse PS Vita shortcuts
         val vitaGameShortcuts = parseVitaShortcuts(json.optJSONArray("vitaGameShortcuts"))
 
@@ -1371,6 +1464,7 @@ class ProfileService @Inject constructor(
             steamGameShortcuts = steamGameShortcuts,
             gogGameShortcuts = gogGameShortcuts,
             epicGameShortcuts = epicGameShortcuts,
+            amazonGameShortcuts = amazonGameShortcuts,
             // PS Vita
             customVitaPath = json.optStringOrNull("customVitaPath"),
             vitaGameShortcuts = vitaGameShortcuts
@@ -1445,6 +1539,20 @@ class ProfileService @Inject constructor(
             shortcuts.add(EpicShortcutData(
                 name = json.getString("name"),
                 internalId = json.getString("internalId"),
+                fileName = json.getString("fileName")
+            ))
+        }
+        return shortcuts
+    }
+
+    private fun parseAmazonShortcuts(array: JSONArray?): List<AmazonShortcutData> {
+        if (array == null) return emptyList()
+        val shortcuts = mutableListOf<AmazonShortcutData>()
+        for (i in 0 until array.length()) {
+            val json = array.getJSONObject(i)
+            shortcuts.add(AmazonShortcutData(
+                internalId = json.getString("internalId"),
+                name = json.getString("name"),
                 fileName = json.getString("fileName")
             ))
         }
@@ -1548,6 +1656,9 @@ class ProfileService @Inject constructor(
         json.put("gogGameShortcuts", serializeGogShortcuts(config.gogGameShortcuts))
         json.put("epicGameShortcuts", serializeEpicShortcuts(config.epicGameShortcuts))
 
+        // Amazon shortcuts
+        json.put("amazonGameShortcuts", serializeAmazonShortcuts(config.amazonGameShortcuts))
+
         // PS Vita shortcuts
         json.put("vitaGameShortcuts", serializeVitaShortcuts(config.vitaGameShortcuts))
 
@@ -1612,6 +1723,18 @@ class ProfileService @Inject constructor(
             val json = JSONObject()
             json.put("name", shortcut.name)
             json.put("internalId", shortcut.internalId)
+            json.put("fileName", shortcut.fileName)
+            array.put(json)
+        }
+        return array
+    }
+
+    private fun serializeAmazonShortcuts(shortcuts: List<AmazonShortcutData>): JSONArray {
+        val array = JSONArray()
+        shortcuts.forEach { shortcut ->
+            val json = JSONObject()
+            json.put("internalId", shortcut.internalId)
+            json.put("name", shortcut.name)
             json.put("fileName", shortcut.fileName)
             array.put(json)
         }

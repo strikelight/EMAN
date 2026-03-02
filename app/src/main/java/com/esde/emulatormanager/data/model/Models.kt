@@ -174,6 +174,10 @@ data class WindowsGamesUiState(
     val epicImportPath: String = "",
     val epicFoundGames: List<EpicGame> = emptyList(),
     val isScanningEpic: Boolean = false,
+    // Amazon game import state
+    val amazonImportPath: String = "",
+    val amazonFoundGames: List<AmazonGame> = emptyList(),
+    val isScanningAmazon: Boolean = false,
     // ES-DE configuration state
     val isGameHubLiteConfigured: Boolean = false,
     val isGameNativeConfigured: Boolean = false,
@@ -224,12 +228,22 @@ data class EpicGame(
 )
 
 /**
+ * Represents an Amazon game imported from GameNative export
+ */
+data class AmazonGame(
+    val internalId: String,  // GameNative's internal ID (from file content)
+    val name: String,        // Game name (from filename)
+    val sourcePath: String   // Original file path
+)
+
+/**
  * Enum for Windows game platforms
  */
 enum class WindowsGamePlatform {
     STEAM,
     GOG,
-    EPIC
+    EPIC,
+    AMAZON
 }
 
 /**

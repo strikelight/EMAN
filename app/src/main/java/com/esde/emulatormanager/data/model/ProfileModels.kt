@@ -62,6 +62,15 @@ data class EpicShortcutData(
 )
 
 /**
+ * Lightweight shortcut data for Amazon games (.amazon files)
+ */
+data class AmazonShortcutData(
+    val internalId: String,  // content of the .amazon file (GameNative internal ID)
+    val name: String,
+    val fileName: String     // e.g., "Steamworld Dig 2.amazon"
+)
+
+/**
  * Lightweight shortcut data for PS Vita games (.psvita files)
  */
 data class VitaShortcutData(
@@ -95,6 +104,7 @@ data class ProfileConfiguration(
     val steamGameShortcuts: List<SteamShortcutData> = emptyList(),
     val gogGameShortcuts: List<GogShortcutData> = emptyList(),
     val epicGameShortcuts: List<EpicShortcutData> = emptyList(),
+    val amazonGameShortcuts: List<AmazonShortcutData> = emptyList(),
     // PS Vita
     val customVitaPath: String? = null,
     val vitaGameShortcuts: List<VitaShortcutData> = emptyList()
@@ -104,7 +114,7 @@ data class ProfileConfiguration(
         get() = androidGameShortcuts.size + androidAppShortcuts.size +
                 androidEmulatorShortcuts.size + windowsGameShortcuts.size +
                 steamGameShortcuts.size + gogGameShortcuts.size + epicGameShortcuts.size +
-                vitaGameShortcuts.size
+                amazonGameShortcuts.size + vitaGameShortcuts.size
 }
 
 /**
@@ -134,9 +144,11 @@ data class Profile(
             parts.add("${config.androidEmulatorShortcuts.size} emulators")
         }
         if (config.windowsGameShortcuts.isNotEmpty() || config.steamGameShortcuts.isNotEmpty() ||
-            config.gogGameShortcuts.isNotEmpty() || config.epicGameShortcuts.isNotEmpty()) {
+            config.gogGameShortcuts.isNotEmpty() || config.epicGameShortcuts.isNotEmpty() ||
+            config.amazonGameShortcuts.isNotEmpty()) {
             val windowsTotal = config.windowsGameShortcuts.size + config.steamGameShortcuts.size +
-                    config.gogGameShortcuts.size + config.epicGameShortcuts.size
+                    config.gogGameShortcuts.size + config.epicGameShortcuts.size +
+                    config.amazonGameShortcuts.size
             parts.add("$windowsTotal Windows games")
         }
         if (config.vitaGameShortcuts.isNotEmpty()) {
@@ -169,6 +181,7 @@ data class ProfileLoadResult(
     val steamGamesCleared: Int = 0,
     val gogGamesCleared: Int = 0,
     val epicGamesCleared: Int = 0,
+    val amazonGamesCleared: Int = 0,
     val vitaGamesCleared: Int = 0,
     val androidGamesRestored: Int = 0,
     val androidAppsRestored: Int = 0,
@@ -177,6 +190,7 @@ data class ProfileLoadResult(
     val steamGamesRestored: Int = 0,
     val gogGamesRestored: Int = 0,
     val epicGamesRestored: Int = 0,
+    val amazonGamesRestored: Int = 0,
     val vitaGamesRestored: Int = 0,
     val errorMessage: String? = null
 ) {
@@ -185,10 +199,10 @@ data class ProfileLoadResult(
 
         val cleared = androidGamesCleared + androidAppsCleared + androidEmulatorsCleared +
                 windowsGamesCleared + steamGamesCleared + gogGamesCleared + epicGamesCleared +
-                vitaGamesCleared
+                amazonGamesCleared + vitaGamesCleared
         val restored = androidGamesRestored + androidAppsRestored + androidEmulatorsRestored +
                 windowsGamesRestored + steamGamesRestored + gogGamesRestored + epicGamesRestored +
-                vitaGamesRestored
+                amazonGamesRestored + vitaGamesRestored
 
         return "Loaded '$profileName': cleared $cleared shortcuts, restored $restored shortcuts"
     }

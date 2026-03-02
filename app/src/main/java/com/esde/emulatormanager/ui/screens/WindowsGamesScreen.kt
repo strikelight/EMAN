@@ -49,6 +49,7 @@ fun WindowsGamesScreen(
     onAddSteamGame: () -> Unit,
     onAddGogGame: () -> Unit = {},
     onImportEpicGame: () -> Unit = {},
+    onImportAmazonGame: () -> Unit = {},
     onDismissSuccess: () -> Unit,
     onDismissError: () -> Unit,
     onShowPathSelectionDialog: (Boolean) -> Unit,
@@ -164,12 +165,13 @@ fun WindowsGamesScreen(
                         title = "Windows Games",
                         description = "Add Windows/PC games to ES-DE using GameHub Lite or GameNative.",
                         features = listOf(
-                            "Games are grouped by platform: Steam, GOG, and Epic Games",
+                            "Games are grouped by platform: Steam, GOG, Epic Games, and Amazon",
                             "Add Steam games by searching the Steam database (+ button → Add Steam Game)",
                             "Add GOG games by searching the GOG database (+ button → Add GOG Game)",
                             "Import Epic games from .epicgame files exported by GameNative (+ button → Import Epic Game)",
+                            "Import Amazon games from .amazongame files exported by GameNative (+ button → Import Amazon Game)",
                             "GameHub Lite launches Steam games via .steam shortcut files",
-                            "GameNative launches Steam, GOG, and Epic games via .steam/.gog/.epic shortcut files",
+                            "GameNative launches Steam, GOG, Epic, and Amazon games via .steam/.gog/.epic/.amazon shortcut files",
                             "ES-DE Launcher Configuration card shows status of GameHub Lite & GameNative — use Fix/Update to apply",
                             "Scrape settings (tune icon) controls what is downloaded: metadata, artwork, and/or videos",
                             "Scrape settings apply to all operations: batch scrape, re-scrape, and adding new games",
@@ -241,6 +243,19 @@ fun WindowsGamesScreen(
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.FileDownload,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Import Amazon Game") },
+                        onClick = {
+                            showAddGameMenu = false
+                            onImportAmazonGame()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.ShoppingCart,
                                 contentDescription = null
                             )
                         }
@@ -634,7 +649,7 @@ private fun LauncherConfigCard(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = ".gog, .epic files",
+                    text = ".gog, .epic, .amazon files",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -821,14 +836,16 @@ private fun WindowsGamesSection(
     // Collect all games from all launchers and group by platform (launcherName)
     val allGames = launchers.flatMap { it.games }
 
-    // Group games by their launcher name (Steam, GOG, Epic)
+    // Group games by their launcher name (Steam, GOG, Epic, Amazon)
     val steamGames = allGames.filter { it.launcherName.contains("Steam", ignoreCase = true) }
     val gogGames = allGames.filter { it.launcherName.contains("GOG", ignoreCase = true) }
     val epicGames = allGames.filter { it.launcherName.contains("Epic", ignoreCase = true) }
+    val amazonGames = allGames.filter { it.launcherName.contains("Amazon", ignoreCase = true) }
     val otherGames = allGames.filter { game ->
         !game.launcherName.contains("Steam", ignoreCase = true) &&
         !game.launcherName.contains("GOG", ignoreCase = true) &&
-        !game.launcherName.contains("Epic", ignoreCase = true)
+        !game.launcherName.contains("Epic", ignoreCase = true) &&
+        !game.launcherName.contains("Amazon", ignoreCase = true)
     }
 
     val totalGames = allGames.size
@@ -969,9 +986,25 @@ private fun WindowsGamesSection(
                 )
             }
 
+            // Amazon Games Section
+            if (amazonGames.isNotEmpty()) {
+                if (steamGames.isNotEmpty() || gogGames.isNotEmpty() || epicGames.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                PlatformSubsection(
+                    platformName = "Amazon",
+                    platformDescription = "GameNative (.amazon)",
+                    games = amazonGames,
+                    onAddGame = onAddGame,
+                    onRemoveGame = onRemoveGame,
+                    onReScrapeGame = onReScrapeGame,
+                    getArtworkPath = getArtworkPath
+                )
+            }
+
             // Other games (if any)
             if (otherGames.isNotEmpty()) {
-                if (steamGames.isNotEmpty() || gogGames.isNotEmpty() || epicGames.isNotEmpty()) {
+                if (steamGames.isNotEmpty() || gogGames.isNotEmpty() || epicGames.isNotEmpty() || amazonGames.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 PlatformSubsection(

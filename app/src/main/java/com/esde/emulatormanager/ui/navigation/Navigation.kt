@@ -47,6 +47,7 @@ sealed class Screen(val route: String) {
     data object AddSteamGame : Screen("add_steam_game")
     data object AddGogGame : Screen("add_gog_game")
     data object ImportEpicGame : Screen("import_epic_game")
+    data object ImportAmazonGame : Screen("import_amazon_game")
     data object AddCustomEmulator : Screen("add_custom_emulator")
     data object ConfigureCustomEmulator : Screen("configure_custom_emulator")
     data object About : Screen("about")
@@ -394,6 +395,10 @@ private fun NavHostContent(
                     viewModel.clearEpicImportState()
                     navController.navigate(Screen.ImportEpicGame.route)
                 },
+                onImportAmazonGame = {
+                    viewModel.clearAmazonImportState()
+                    navController.navigate(Screen.ImportAmazonGame.route)
+                },
                 onDismissSuccess = viewModel::clearWindowsGamesSuccess,
                 onDismissError = viewModel::clearWindowsGamesError,
                 onShowPathSelectionDialog = viewModel::setShowPathSelectionDialog,
@@ -625,6 +630,29 @@ private fun NavHostContent(
                 onDismissSuccess = viewModel::clearWindowsGamesSuccess,
                 onBack = {
                     viewModel.clearEpicImportState()
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.ImportAmazonGame.route) {
+            val existingGames = remember { viewModel.getExistingAmazonGameNames() }
+
+            ImportAmazonGameScreen(
+                importPath = windowsGamesState.amazonImportPath,
+                foundGames = windowsGamesState.amazonFoundGames,
+                existingGames = existingGames,
+                isScanning = windowsGamesState.isScanningAmazon,
+                errorMessage = windowsGamesState.error,
+                successMessage = windowsGamesState.successMessage,
+                onPathChange = viewModel::updateAmazonImportPath,
+                onScanPath = viewModel::scanForAmazonGames,
+                onImportGame = viewModel::importAmazonGame,
+                onImportAll = viewModel::importAllAmazonGames,
+                onDismissError = viewModel::clearWindowsGamesError,
+                onDismissSuccess = viewModel::clearWindowsGamesSuccess,
+                onBack = {
+                    viewModel.clearAmazonImportState()
                     navController.popBackStack()
                 }
             )

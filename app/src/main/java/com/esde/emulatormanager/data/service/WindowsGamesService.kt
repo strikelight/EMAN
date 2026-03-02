@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Environment
 import android.util.Log
 import com.esde.emulatormanager.data.model.ConfigResult
+import com.esde.emulatormanager.data.model.AmazonGame
 import com.esde.emulatormanager.data.model.EpicGame
 import com.esde.emulatormanager.data.model.GameSystem
 import com.esde.emulatormanager.data.model.GogGame
@@ -50,10 +51,12 @@ class WindowsGamesService @Inject constructor(
         private const val STEAM_EXTENSION = ".steam"
         private const val GOG_EXTENSION = ".gog"
         private const val EPIC_EXTENSION = ".epic"
+        private const val AMAZON_EXTENSION = ".amazon"
 
         // GameNative export formats (for import detection)
         private const val GAMENATIVE_GOG_EXTENSION = "zst"  // GameNative GOG files end with "zst" (no dot)
         private const val GAMENATIVE_EPIC_EXTENSION = ".epicgame"
+        private const val GAMENATIVE_AMAZON_EXTENSION = ".amazongame"
     }
 
     private data class LauncherInfo(
@@ -161,12 +164,13 @@ class WindowsGamesService @Inject constructor(
 
         if (!folder.exists() || !folder.isDirectory) return games
 
-        // Scan for all supported shortcut types: .steam, .gog, .epic
+        // Scan for all supported shortcut types: .steam, .gog, .epic, .amazon
         val shortcutFiles = folder.listFiles { file ->
             file.isFile && (
                 file.name.endsWith(STEAM_EXTENSION, ignoreCase = true) ||
                 file.name.endsWith(GOG_EXTENSION, ignoreCase = true) ||
-                file.name.endsWith(EPIC_EXTENSION, ignoreCase = true)
+                file.name.endsWith(EPIC_EXTENSION, ignoreCase = true) ||
+                file.name.endsWith(AMAZON_EXTENSION, ignoreCase = true)
             )
         } ?: return games
 
@@ -180,12 +184,13 @@ class WindowsGamesService @Inject constructor(
                     WindowsGamePlatform.STEAM -> "Steam (GameHub Lite)"
                     WindowsGamePlatform.GOG -> "GOG (GameNative)"
                     WindowsGamePlatform.EPIC -> "Epic (GameNative)"
+                    WindowsGamePlatform.AMAZON -> "Amazon (GameNative)"
                     else -> launcherName
                 }
 
                 val actualLauncherPackage = when (platform) {
                     WindowsGamePlatform.STEAM -> launcherPackage
-                    WindowsGamePlatform.GOG, WindowsGamePlatform.EPIC -> "app.gamenative"
+                    WindowsGamePlatform.GOG, WindowsGamePlatform.EPIC, WindowsGamePlatform.AMAZON -> "app.gamenative"
                     else -> launcherPackage
                 }
 
@@ -451,7 +456,8 @@ class WindowsGamesService @Inject constructor(
                 }
                 file.name.endsWith(STEAM_EXTENSION) ||
                 file.name.endsWith(GOG_EXTENSION) ||
-                file.name.endsWith(EPIC_EXTENSION) -> {
+                file.name.endsWith(EPIC_EXTENSION) ||
+                file.name.endsWith(AMAZON_EXTENSION) -> {
                     val shortcut = parsePlatformShortcutFile(file)
                     if (shortcut != null) {
                         shortcuts.add(shortcut)
@@ -475,6 +481,7 @@ class WindowsGamesService @Inject constructor(
                 WindowsGamePlatform.STEAM -> "Steam (GameHub Lite)"
                 WindowsGamePlatform.GOG -> "GOG (GameNative)"
                 WindowsGamePlatform.EPIC -> "Epic (GameNative)"
+                WindowsGamePlatform.AMAZON -> "Amazon (GameNative)"
                 else -> "Unknown"
             }
 
@@ -586,7 +593,7 @@ class WindowsGamesService @Inject constructor(
 
     /**
      * Remove a shortcut file from ES-DE windows folder.
-     * Checks for .desktop, .steam, .gog, and .epic file extensions.
+     * Checks for .desktop, .steam, .gog, .epic, and .amazon file extensions.
      */
     fun removeShortcut(shortcutId: String): ConfigResult<Unit> {
         val windowsPath = getEsdeWindowsPath()
@@ -597,7 +604,8 @@ class WindowsGamesService @Inject constructor(
             File(windowsPath, "$shortcutId$SHORTCUT_EXTENSION"),
             File(windowsPath, "$shortcutId$STEAM_EXTENSION"),
             File(windowsPath, "$shortcutId$GOG_EXTENSION"),
-            File(windowsPath, "$shortcutId$EPIC_EXTENSION")
+            File(windowsPath, "$shortcutId$EPIC_EXTENSION"),
+            File(windowsPath, "$shortcutId$AMAZON_EXTENSION")
         )
 
         return try {
@@ -1149,6 +1157,143 @@ class WindowsGamesService @Inject constructor(
         return launchers
     }
 
+    // ==================== Amazon Game Support ====================
+
+    /**
+     * Import an Amazon game shortcut from a GameNative .amazongame export file.
+     * Reads the GameNative .amazongame file and creates a .amazon file in the ES-DE windows folder.
+     *
+     * @param sourceFile The exported .amazongame file from GameNative
+     */
+    fun importAmazonShortcut(sourceFile: File): ConfigResult<AmazonGame> {
+        val windowsPath = getEsdeWindowsPath()
+            ?: return ConfigResult.Error("Could not determine ES-DE windows path")
+
+        if (!sourceFile.name.endsWith(GAMENATIVE_AMAZON_EXTENSION)) {
+            return ConfigResult.Error("File must have .amazongame extension (GameNative export format)")
+        }
+
+        return try {
+            val windowsDir = File(windowsPath)
+            if (!windowsDir.exists()) {
+                if (!windowsDir.mkdirs()) {
+                    return ConfigResult.Error("Could not create ES-DE windows directory")
+                }
+            }
+
+            // Read the internal ID from the .amazongame file
+            val internalId = sourceFile.readText().trim()
+            if (internalId.isBlank()) {
+                return ConfigResult.Error("Invalid .amazongame file: content is empty")
+            }
+
+            // Get game name from filename (remove .amazongame extension)
+            val gameName = sourceFile.name.removeSuffix(GAMENATIVE_AMAZON_EXTENSION)
+
+            // Create a safe filename with .amazon extension (ES-DE compatible)
+            val safeFileName = generateShortcutId(gameName)
+            val destFile = File(windowsDir, "$safeFileName$AMAZON_EXTENSION")
+
+            // Write the internal ID to the new .amazon file
+            destFile.writeText(internalId)
+            Log.d(TAG, "Imported Amazon shortcut: ${destFile.absolutePath} with ID: $internalId")
+
+            val amazonGame = AmazonGame(
+                internalId = internalId,
+                name = gameName,
+                sourcePath = destFile.absolutePath
+            )
+
+            ConfigResult.Success(amazonGame)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error importing Amazon shortcut", e)
+            ConfigResult.Error("Failed to import Amazon shortcut: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Get all Amazon games currently in ES-DE windows folder
+     */
+    fun getExistingAmazonGames(): List<AmazonGame> {
+        val windowsPath = getEsdeWindowsPath() ?: return emptyList()
+        val windowsDir = File(windowsPath)
+
+        if (!windowsDir.exists()) return emptyList()
+
+        val games = mutableListOf<AmazonGame>()
+
+        for (file in windowsDir.listFiles() ?: emptyArray()) {
+            if (file.name.endsWith(AMAZON_EXTENSION)) {
+                try {
+                    val internalId = file.readText().trim()
+                    val gameName = file.nameWithoutExtension
+                        .replace("_", " ")
+                        .split(" ")
+                        .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                    games.add(AmazonGame(
+                        internalId = internalId,
+                        name = gameName,
+                        sourcePath = file.absolutePath
+                    ))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error reading Amazon file: ${file.name}", e)
+                }
+            }
+        }
+
+        return games
+    }
+
+    /**
+     * Remove an Amazon shortcut by filename
+     */
+    fun removeAmazonShortcut(shortcutId: String): ConfigResult<Unit> {
+        val windowsPath = getEsdeWindowsPath()
+            ?: return ConfigResult.Error("Could not determine ES-DE windows path")
+
+        val amazonFile = File(windowsPath, "$shortcutId$AMAZON_EXTENSION")
+
+        return try {
+            if (amazonFile.exists()) {
+                if (amazonFile.delete()) {
+                    Log.d(TAG, "Removed Amazon shortcut: ${amazonFile.absolutePath}")
+                    ConfigResult.Success(Unit)
+                } else {
+                    ConfigResult.Error("Could not delete Amazon shortcut file")
+                }
+            } else {
+                ConfigResult.Success(Unit) // File not found, consider it removed
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error removing Amazon shortcut: $shortcutId", e)
+            ConfigResult.Error("Failed to remove Amazon shortcut: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Get the list of installed Windows launchers that support Amazon games
+     */
+    fun getAmazonCompatibleLaunchers(): List<Pair<String, String>> {
+        val pm = context.packageManager
+        val launchers = mutableListOf<Pair<String, String>>()
+
+        val amazonCompatiblePackages = listOf(
+            "app.gamenative" to "GameNative",
+            "com.nickmafra.gamenative" to "GameNative"  // Legacy package name
+        )
+
+        for ((packageName, displayName) in amazonCompatiblePackages) {
+            try {
+                pm.getApplicationInfo(packageName, 0)
+                launchers.add(packageName to displayName)
+            } catch (e: PackageManager.NameNotFoundException) {
+                // Not installed
+            }
+        }
+
+        return launchers
+    }
+
     // ==================== Platform Detection ====================
 
     /**
@@ -1159,6 +1304,7 @@ class WindowsGamesService @Inject constructor(
             file.name.endsWith(STEAM_EXTENSION) -> WindowsGamePlatform.STEAM
             file.name.endsWith(GOG_EXTENSION) -> WindowsGamePlatform.GOG
             file.name.endsWith(EPIC_EXTENSION) -> WindowsGamePlatform.EPIC
+            file.name.endsWith(AMAZON_EXTENSION) -> WindowsGamePlatform.AMAZON
             else -> null
         }
     }
@@ -1171,6 +1317,7 @@ class WindowsGamesService @Inject constructor(
             file.name.endsWith(STEAM_EXTENSION) -> file.name.dropLast(STEAM_EXTENSION.length)
             file.name.endsWith(GOG_EXTENSION) -> file.name.dropLast(GOG_EXTENSION.length)
             file.name.endsWith(EPIC_EXTENSION) -> file.name.dropLast(EPIC_EXTENSION.length)
+            file.name.endsWith(AMAZON_EXTENSION) -> file.name.dropLast(AMAZON_EXTENSION.length)
             else -> file.nameWithoutExtension
         }
     }

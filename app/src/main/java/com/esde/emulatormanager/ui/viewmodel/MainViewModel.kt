@@ -805,6 +805,150 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // ========== Amazon Game Import Functions ==========
+
+    fun updateAmazonImportPath(path: String) {
+        _windowsGamesState.update { it.copy(amazonImportPath = path) }
+    }
+
+    fun scanForAmazonGames() {
+        val path = _windowsGamesState.value.amazonImportPath
+        if (path.isBlank()) return
+
+        viewModelScope.launch {
+            _windowsGamesState.update { it.copy(isScanningAmazon = true, error = null) }
+
+            withContext(Dispatchers.IO) {
+                val file = java.io.File(path)
+
+                if (file.exists() && file.isFile && file.name.endsWith(".amazongame")) {
+                    try {
+                        when (val result = windowsGamesService.importAmazonShortcut(file)) {
+                            is ConfigResult.Success -> {
+                                val importedGame = result.data
+                                val gameFileName = java.io.File(importedGame.sourcePath).nameWithoutExtension
+
+                                var metadataScraped = false
+                                try {
+                                    metadataScraped = metadataService.scrapeAndSaveEpicMetadata(
+                                        importedGame.name, gameFileName, _windowsGamesState.value.scrapeOptions
+                                    )
+                                } catch (e: Exception) {
+                                    android.util.Log.e("MainViewModel", "Amazon metadata scrape exception: ${e.message}", e)
+                                }
+
+                                val existingGames = windowsGamesService.getExistingAmazonGames()
+                                _windowsGamesState.update {
+                                    it.copy(
+                                        isScanningAmazon = false,
+                                        amazonImportPath = "",
+                                        amazonFoundGames = existingGames,
+                                        successMessage = if (metadataScraped) {
+                                            "Imported ${importedGame.name} with metadata"
+                                        } else {
+                                            "Imported ${importedGame.name}"
+                                        },
+                                        gamesWithoutMetadataCount = metadataService.getWindowsGamesWithoutMetadataCount()
+                                    )
+                                }
+                            }
+                            is ConfigResult.Error -> {
+                                _windowsGamesState.update {
+                                    it.copy(
+                                        isScanningAmazon = false,
+                                        error = result.message
+                                    )
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainViewModel", "Error importing Amazon file: ${file.name}", e)
+                        _windowsGamesState.update {
+                            it.copy(
+                                isScanningAmazon = false,
+                                error = "Error importing Amazon game: ${e.message}"
+                            )
+                        }
+                    }
+                } else {
+                    _windowsGamesState.update {
+                        it.copy(
+                            isScanningAmazon = false,
+                            error = if (!file.exists()) "File not found: $path" else "Please select a .amazongame file"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun importAmazonGame(game: AmazonGame) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val sourceFile = java.io.File(game.sourcePath)
+                when (val result = windowsGamesService.importAmazonShortcut(sourceFile)) {
+                    is ConfigResult.Success -> {
+                        val importedGame = result.data
+                        val gameFileName = java.io.File(importedGame.sourcePath).nameWithoutExtension
+                        try {
+                            metadataService.scrapeAndSaveEpicMetadata(
+                                importedGame.name, gameFileName, _windowsGamesState.value.scrapeOptions
+                            )
+                        } catch (e: Exception) {
+                            android.util.Log.e("MainViewModel", "Amazon metadata scrape exception: ${e.message}", e)
+                        }
+                        _windowsGamesState.update {
+                            it.copy(successMessage = "Imported ${importedGame.name}")
+                        }
+                        scanForAmazonGames()
+                    }
+                    is ConfigResult.Error -> {
+                        _windowsGamesState.update { it.copy(error = result.message) }
+                    }
+                }
+            }
+        }
+    }
+
+    fun importAllAmazonGames() {
+        val games = _windowsGamesState.value.amazonFoundGames
+        val existingNames = getExistingAmazonGameNames()
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                var importedCount = 0
+                games.filter { it.name.lowercase() !in existingNames }.forEach { game ->
+                    val sourceFile = java.io.File(game.sourcePath)
+                    when (windowsGamesService.importAmazonShortcut(sourceFile)) {
+                        is ConfigResult.Success -> importedCount++
+                        else -> { /* skip failures */ }
+                    }
+                }
+                _windowsGamesState.update {
+                    it.copy(successMessage = "Imported $importedCount Amazon games")
+                }
+                scanForAmazonGames()
+            }
+        }
+    }
+
+    fun getExistingAmazonGameNames(): Set<String> {
+        return windowsGamesService.getExistingAmazonGames().map { it.name.lowercase() }.toSet()
+    }
+
+    fun getAmazonCompatibleLaunchers(): List<Pair<String, String>> {
+        return windowsGamesService.getAmazonCompatibleLaunchers()
+    }
+
+    fun clearAmazonImportState() {
+        val existingGames = windowsGamesService.getExistingAmazonGames()
+        _windowsGamesState.update {
+            it.copy(
+                amazonImportPath = "",
+                amazonFoundGames = existingGames
+            )
+        }
+    }
+
     // ========== ES-DE Configuration Functions ==========
 
     /**
@@ -1284,6 +1428,10 @@ class MainViewModel @Inject constructor(
                     }
                     // Epic game: use game name for IGDB search
                     windowsPath != null && java.io.File(windowsPath, "${game.id}.epic").exists() -> {
+                        metadataService.reScrapeEpicGame(game.name, game.id, options)
+                    }
+                    // Amazon game: use game name for IGDB search
+                    windowsPath != null && java.io.File(windowsPath, "${game.id}.amazon").exists() -> {
                         metadataService.reScrapeEpicGame(game.name, game.id, options)
                     }
                     else -> false
