@@ -191,6 +191,63 @@ class IgdbService @Inject constructor(
     }
 
     /**
+     * Search for a Windows/PC game by name and return metadata.
+     * Uses IGDB platform ID 6 (PC Windows).
+     * Falls back to a platform-agnostic search if no PC-specific results are found.
+     * Used for Epic, GOG, and Amazon games.
+     */
+    suspend fun searchWindowsGame(gameName: String): MetadataResult = withContext(Dispatchers.IO) {
+        if (!hasCredentials()) {
+            return@withContext MetadataResult.Error("IGDB credentials not configured. Please set up Twitch API credentials.")
+        }
+
+        try {
+            val token = getAccessToken()
+                ?: return@withContext MetadataResult.Error("Failed to authenticate with IGDB. Check your Client ID and Secret.")
+
+            val searchName = cleanGameName(gameName)
+            Log.d(TAG, "Searching IGDB for Windows game: $searchName")
+
+            val fields = """
+                name, summary, rating, first_release_date,
+                genres.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher,
+                cover.url, screenshots.url, videos.video_id, game_modes.name
+            """.trimIndent()
+
+            // Primary: search scoped to PC platform
+            val pcQuery = """
+                search "$searchName";
+                fields $fields;
+                where platforms = ($PLATFORM_PC);
+                limit 5;
+            """.trimIndent()
+
+            val pcResponse = makeIgdbRequest("games", pcQuery, token)
+            if (pcResponse != null && pcResponse.length() > 0) {
+                val result = parseIgdbResponse(pcResponse, gameName)
+                if (result is MetadataResult.Success) return@withContext result
+            }
+
+            // Fallback: search without platform filter
+            Log.d(TAG, "No PC-specific results, trying broader search for: $searchName")
+            val broaderQuery = """
+                search "$searchName";
+                fields $fields;
+                limit 5;
+            """.trimIndent()
+
+            val broaderResponse = makeIgdbRequest("games", broaderQuery, token)
+            if (broaderResponse == null || broaderResponse.length() == 0) {
+                return@withContext MetadataResult.NotFound(gameName)
+            }
+            parseIgdbResponse(broaderResponse, gameName)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error searching IGDB for Windows game: ${e.message}", e)
+            MetadataResult.Error("Failed to search IGDB: ${e.message}")
+        }
+    }
+
+    /**
      * Download cover image for a game.
      * @param imageUrl The IGDB image URL (partial)
      * @param systemName The ES-DE system name (e.g., "android", "androidgames")

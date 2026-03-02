@@ -448,8 +448,8 @@ class MetadataService @Inject constructor(
 
         val gamePath = "./$gameFileName$fileExtension"
 
-        // Search IGDB by game name
-        when (val result = igdbService.searchAndroidGame(gameName, "")) {
+        // Search IGDB by game name using PC platform filter
+        when (val result = igdbService.searchWindowsGame(gameName)) {
             is MetadataResult.Success -> {
                 var metadata = result.metadata.copy(path = gamePath)
                 var hasArtwork = false
