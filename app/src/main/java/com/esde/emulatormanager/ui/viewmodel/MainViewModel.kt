@@ -821,7 +821,7 @@ class MainViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 val file = java.io.File(path)
 
-                if (file.exists() && file.isFile && file.name.endsWith(".amazongame")) {
+                if (file.exists() && file.isFile && file.name.endsWith(".amazon")) {
                     try {
                         when (val result = windowsGamesService.importAmazonShortcut(file)) {
                             is ConfigResult.Success -> {
@@ -874,7 +874,7 @@ class MainViewModel @Inject constructor(
                     _windowsGamesState.update {
                         it.copy(
                             isScanningAmazon = false,
-                            error = if (!file.exists()) "File not found: $path" else "Please select a .amazongame file"
+                            error = if (!file.exists()) "File not found: $path" else "Please select a .amazon file"
                         )
                     }
                 }

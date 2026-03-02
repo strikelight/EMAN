@@ -169,7 +169,7 @@ fun WindowsGamesScreen(
                             "Add Steam games by searching the Steam database (+ button → Add Steam Game)",
                             "Add GOG games by searching the GOG database (+ button → Add GOG Game)",
                             "Import Epic games from .epicgame files exported by GameNative (+ button → Import Epic Game)",
-                            "Import Amazon games from .amazongame files exported by GameNative (+ button → Import Amazon Game)",
+                            "Import Amazon games from .amazon files exported by GameNative (+ button → Import Amazon Game)",
                             "GameHub Lite launches Steam games via .steam shortcut files",
                             "GameNative launches Steam, GOG, Epic, and Amazon games via .steam/.gog/.epic/.amazon shortcut files",
                             "ES-DE Launcher Configuration card shows status of GameHub Lite & GameNative — use Fix/Update to apply",
