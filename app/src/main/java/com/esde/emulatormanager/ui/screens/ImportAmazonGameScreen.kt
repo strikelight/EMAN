@@ -50,7 +50,7 @@ fun ImportAmazonGameScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedFileName by remember { mutableStateOf<String?>(null) }
 
-    // File picker launcher for .amazongame files
+    // File picker launcher for .amazon files
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -228,7 +228,7 @@ fun ImportAmazonGameScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    enabled = importPath.isNotEmpty() && importPath.endsWith(".amazongame") && !isScanning
+                    enabled = importPath.isNotEmpty() && importPath.endsWith(".amazon") && !isScanning
                 ) {
                     if (isScanning) {
                         CircularProgressIndicator(
@@ -243,10 +243,10 @@ fun ImportAmazonGameScreen(
             }
 
             // Validation message
-            if (importPath.isNotEmpty() && !importPath.endsWith(".amazongame")) {
+            if (importPath.isNotEmpty() && !importPath.endsWith(".amazon")) {
                 item {
                     Text(
-                        text = "Please select a .amazongame file exported from GameNative",
+                        text = "Please select a .amazon file exported from GameNative",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
