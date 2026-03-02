@@ -831,7 +831,7 @@ class MainViewModel @Inject constructor(
                                 var metadataScraped = false
                                 try {
                                     metadataScraped = metadataService.scrapeAndSaveEpicMetadata(
-                                        importedGame.name, gameFileName, _windowsGamesState.value.scrapeOptions
+                                        importedGame.name, gameFileName, _windowsGamesState.value.scrapeOptions, ".amazon"
                                     )
                                 } catch (e: Exception) {
                                     android.util.Log.e("MainViewModel", "Amazon metadata scrape exception: ${e.message}", e)
@@ -892,7 +892,7 @@ class MainViewModel @Inject constructor(
                         val gameFileName = java.io.File(importedGame.sourcePath).nameWithoutExtension
                         try {
                             metadataService.scrapeAndSaveEpicMetadata(
-                                importedGame.name, gameFileName, _windowsGamesState.value.scrapeOptions
+                                importedGame.name, gameFileName, _windowsGamesState.value.scrapeOptions, ".amazon"
                             )
                         } catch (e: Exception) {
                             android.util.Log.e("MainViewModel", "Amazon metadata scrape exception: ${e.message}", e)
@@ -1432,7 +1432,7 @@ class MainViewModel @Inject constructor(
                     }
                     // Amazon game: use game name for IGDB search
                     windowsPath != null && java.io.File(windowsPath, "${game.id}.amazon").exists() -> {
-                        metadataService.reScrapeEpicGame(game.name, game.id, options)
+                        metadataService.reScrapeEpicGame(game.name, game.id, options, ".amazon")
                     }
                     else -> false
                 }

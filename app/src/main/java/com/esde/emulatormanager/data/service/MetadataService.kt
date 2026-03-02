@@ -440,13 +440,13 @@ class MetadataService @Inject constructor(
      * @param gameFileName The game file name (without extension)
      * @return True if metadata was successfully scraped and saved
      */
-    suspend fun scrapeAndSaveEpicMetadata(gameName: String, gameFileName: String, options: ScrapeOptions = ScrapeOptions()): Boolean = withContext(Dispatchers.IO) {
+    suspend fun scrapeAndSaveEpicMetadata(gameName: String, gameFileName: String, options: ScrapeOptions = ScrapeOptions(), fileExtension: String = ".epic"): Boolean = withContext(Dispatchers.IO) {
         if (!igdbService.hasCredentials()) {
-            Log.w(TAG, "IGDB credentials not configured for Epic game scraping")
+            Log.w(TAG, "IGDB credentials not configured for Epic/Amazon game scraping")
             return@withContext false
         }
 
-        val gamePath = "./$gameFileName.epic"
+        val gamePath = "./$gameFileName$fileExtension"
 
         // Search IGDB by game name
         when (val result = igdbService.searchAndroidGame(gameName, "")) {
@@ -536,11 +536,11 @@ class MetadataService @Inject constructor(
     /**
      * Re-scrape metadata and artwork for a single Epic game.
      */
-    suspend fun reScrapeEpicGame(gameName: String, gameFileName: String, options: ScrapeOptions = ScrapeOptions()): Boolean = withContext(Dispatchers.IO) {
+    suspend fun reScrapeEpicGame(gameName: String, gameFileName: String, options: ScrapeOptions = ScrapeOptions(), fileExtension: String = ".epic"): Boolean = withContext(Dispatchers.IO) {
         // Delete existing artwork
         deleteExistingMedia(gameFileName)
         // Scrape fresh
-        scrapeAndSaveEpicMetadata(gameName, gameFileName, options)
+        scrapeAndSaveEpicMetadata(gameName, gameFileName, options, fileExtension)
     }
 
     // ==================== Utility Methods for Windows Games ====================
