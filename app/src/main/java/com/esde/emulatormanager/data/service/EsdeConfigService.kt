@@ -581,7 +581,7 @@ class EsdeConfigService @Inject constructor(
      * This updates both es_systems.xml and es_find_rules.xml in custom_systems.
      *
      * GameHub Lite handles .steam files (Steam games)
-     * GameNative handles .gog and .epic files (GOG and Epic games)
+     * GameNative handles .gog, .epic, and .amazon files (GOG, Epic, and Amazon games)
      *
      * @param windowsRomPath The path to the Windows ROMs folder
      * @return Result indicating success or failure
@@ -637,6 +637,12 @@ class EsdeConfigService @Inject constructor(
             command = "%EMULATOR_$gameNativeEpicEmulatorName% %ACTION%=app.gamenative.LAUNCH_GAME %EXTRAINTEGER_app_id%=%INJECT%=%ROM% %EXTRA_game_source%=EPIC"
         )
 
+        val gameNativeAmazonEmulatorName = "GAMENATIVE-AMAZON"
+        val gameNativeAmazonCommand = EmulatorCommand(
+            label = "GameNative (Amazon)",
+            command = "%EMULATOR_$gameNativeAmazonEmulatorName% %ACTION%=app.gamenative.LAUNCH_GAME %EXTRAINTEGER_app_id%=%INJECT%=%ROM% %EXTRA_game_source%=AMAZON"
+        )
+
         // Update or create the Windows system entry
         // The first command in the list is the default in ES-DE, so we put GameHub Lite first
         val windowsSystemIndex = existingSystems.indexOfFirst { it.name == "windows" }
@@ -647,8 +653,8 @@ class EsdeConfigService @Inject constructor(
                 cmd.label != "GameHub Lite" && !cmd.command.contains("GAMEHUB-LITE") &&
                 !cmd.command.contains("GAMENATIVE")
             }
-            // Ensure extensions include .gog and .epic
-            val requiredExtensions = listOf(".steam", ".gog", ".epic")
+            // Ensure extensions include .gog, .epic and .amazon
+            val requiredExtensions = listOf(".steam", ".gog", ".epic", ".amazon")
             var updatedExtensions = existingSystem.extensions
             for (ext in requiredExtensions) {
                 if (!updatedExtensions.contains(ext)) {
@@ -656,7 +662,7 @@ class EsdeConfigService @Inject constructor(
                 }
             }
             existingSystems[windowsSystemIndex] = existingSystem.copy(
-                commands = listOf(gameHubLiteCommand, gameNativeSteamCommand, gameNativeGogCommand, gameNativeEpicCommand) + otherCommands,
+                commands = listOf(gameHubLiteCommand, gameNativeSteamCommand, gameNativeGogCommand, gameNativeEpicCommand, gameNativeAmazonCommand) + otherCommands,
                 extensions = updatedExtensions
             )
         } else {
@@ -665,8 +671,8 @@ class EsdeConfigService @Inject constructor(
                 name = "windows",
                 fullName = "Windows",
                 path = windowsRomPath,
-                extensions = ".bat .cmd .exe .game .lnk .ps1 .steam .gog .epic .desktop",
-                commands = listOf(gameHubLiteCommand, gameNativeSteamCommand, gameNativeGogCommand, gameNativeEpicCommand),
+                extensions = ".bat .cmd .exe .game .lnk .ps1 .steam .gog .epic .amazon .desktop",
+                commands = listOf(gameHubLiteCommand, gameNativeSteamCommand, gameNativeGogCommand, gameNativeEpicCommand, gameNativeAmazonCommand),
                 platform = "pc",
                 theme = "windows"
             )
@@ -687,8 +693,8 @@ class EsdeConfigService @Inject constructor(
             existingRules.add(EmulatorRule(name = gameHubLiteEmulatorName, entries = listOf(gameHubLiteEntry)))
         }
 
-        // Update or create find rules for GameNative GOG and Epic.
-        // Both emulator names point to the same app package — ES-DE resolves the package via find rules.
+        // Update or create find rules for GameNative GOG, Epic, and Amazon.
+        // All emulator names point to the same app package — ES-DE resolves the package via find rules.
         val gameNativeEntry = "app.gamenative/app.gamenative.MainActivity"
         val legacyGameNativeEntry = "com.nickmafra.gamenative/com.nickmafra.gamenative.MainActivity"
 
@@ -708,6 +714,7 @@ class EsdeConfigService @Inject constructor(
         upsertGameNativeRule(gameNativeSteamEmulatorName)
         upsertGameNativeRule(gameNativeGogEmulatorName)
         upsertGameNativeRule(gameNativeEpicEmulatorName)
+        upsertGameNativeRule(gameNativeAmazonEmulatorName)
 
         // Remove any old single GAMENATIVE rule that may exist from a previous config version
         existingRules.removeAll { it.name == "GAMENATIVE" }

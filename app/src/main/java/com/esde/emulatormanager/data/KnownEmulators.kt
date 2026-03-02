@@ -458,6 +458,17 @@ object KnownEmulators {
             supportedExtensions = ".epic"
         ),
         KnownEmulator(
+            id = "gamenative_amazon",
+            displayName = "GameNative (Amazon)",
+            packageNames = listOf("app.gamenative", "com.nickmafra.gamenative"),
+            activityName = "app.gamenative.MainActivity",
+            supportedSystems = listOf("windows", "pc"),
+            // %EXTRAINTEGER_app_id% passes the Amazon internal DB ID as an integer (GameNative uses getIntExtra)
+            // %INJECT%=%ROM% reads the .amazon file content (internal DB ID) and uses it as the extra value
+            launchCommand = "%ACTION%=app.gamenative.LAUNCH_GAME %EXTRAINTEGER_app_id%=%INJECT%=%ROM% %EXTRA_game_source%=AMAZON",
+            supportedExtensions = ".amazon"
+        ),
+        KnownEmulator(
             id = "winlator",
             displayName = "Winlator",
             packageNames = listOf(
