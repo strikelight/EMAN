@@ -66,7 +66,7 @@ fun ImportAmazonGameScreen(
 
             if (path != null) {
                 onPathChange(path)
-            } else if (displayName != null && displayName.endsWith(".amazongame")) {
+            } else if (displayName != null && displayName.endsWith(".amazon")) {
                 val possiblePath = findAmazonFileInCommonLocations(displayName)
                 Log.d("ImportAmazonGameScreen", "Found in common location: $possiblePath")
                 if (possiblePath != null) {
@@ -165,7 +165,7 @@ fun ImportAmazonGameScreen(
                                 text = "1. Open GameNative and go to your Amazon library\n" +
                                         "2. Long-press on a game and select \"Export for Frontend\"\n" +
                                         "3. Note the export location (usually Downloads folder)\n" +
-                                        "4. Use the Browse button below to select the .amazongame file\n" +
+                                        "4. Use the Browse button below to select the .amazon file\n" +
                                         "5. The game will be imported to ES-DE",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -184,7 +184,7 @@ fun ImportAmazonGameScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     label = { Text("Selected file") },
-                    placeholder = { Text("Select a .amazongame file") },
+                    placeholder = { Text("Select a .amazon file") },
                     readOnly = true,
                     leadingIcon = {
                         Icon(
@@ -301,7 +301,7 @@ fun ImportAmazonGameScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Use the Browse button above to select\na .amazongame file from GameNative",
+                                text = "Use the Browse button above to select\na .amazon file from GameNative",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )

@@ -1169,8 +1169,8 @@ class WindowsGamesService @Inject constructor(
         val windowsPath = getEsdeWindowsPath()
             ?: return ConfigResult.Error("Could not determine ES-DE windows path")
 
-        if (!sourceFile.name.endsWith(GAMENATIVE_AMAZON_EXTENSION)) {
-            return ConfigResult.Error("File must have .amazongame extension (GameNative export format)")
+        if (!sourceFile.name.endsWith(AMAZON_EXTENSION)) {
+            return ConfigResult.Error("File must have .amazon extension")
         }
 
         return try {
@@ -1181,14 +1181,14 @@ class WindowsGamesService @Inject constructor(
                 }
             }
 
-            // Read the internal ID from the .amazongame file
+            // Read the internal ID from the .amazon file
             val internalId = sourceFile.readText().trim()
             if (internalId.isBlank()) {
-                return ConfigResult.Error("Invalid .amazongame file: content is empty")
+                return ConfigResult.Error("Invalid .amazon file: content is empty")
             }
 
-            // Get game name from filename (remove .amazongame extension)
-            val gameName = sourceFile.name.removeSuffix(GAMENATIVE_AMAZON_EXTENSION)
+            // Get game name from filename (remove .amazon extension)
+            val gameName = sourceFile.name.removeSuffix(AMAZON_EXTENSION)
 
             // Create a safe filename with .amazon extension (ES-DE compatible)
             val safeFileName = generateShortcutId(gameName)

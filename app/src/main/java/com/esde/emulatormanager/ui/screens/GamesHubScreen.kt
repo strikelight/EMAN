@@ -71,7 +71,7 @@ fun GamesHubScreen(
                 subtitle = if (windowsGamesCount > 0) {
                     "$windowsGamesCount game${if (windowsGamesCount != 1) "s" else ""} in ES-DE"
                 } else {
-                    "Add Steam, GOG & Epic games"
+                    "Add Steam, GOG, Epic & Amazon games"
                 },
                 onClick = onNavigateToWindows
             )
